@@ -13,7 +13,6 @@ directory.  After, execute the following commands:
 
 === Building DWGSIM ===
 
-
 To build DWGSIM, execute the following commands:
  make
 

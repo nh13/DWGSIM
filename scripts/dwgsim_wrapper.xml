@@ -1,0 +1,71 @@
+<tool id="dwgsim" name="Generate simulated reads" version="1.0.0">
+  <description>from a fasta sequence using dwgsim</description>
+  <command interpreter="perl">dwgsim_wrapper.pl -e $eRateFirstread -E $eRateSecondread -d $innerDist -s $stDev -N $noReadpairs -1 $loFirstread -2 $loSecondread -r $rateOfMut -R $rateOfIndels -X $probExtRead -y $probRandRead -n $maxAllowN -S $strandDirection $colorSpace $haploMode $input $outputSingleReads $outputPEFirst $outputPESecond $outputMutations $oneOutputFile $__new_file_path__</command>
+  <inputs>
+	<param format="fasta" name="input" type="data" label="Select fasta file to generate reads from"/>
+	<param name="noReadpairs" size="12" type="text" value="1000000">
+		<label>number of read pairs</label>
+	</param>
+	<param name="oneOutputFile" type="boolean" truevalue="twofiles" falsevalue="onefile" checked="True" label="Provide the paired reads in two separate files"/>
+	<param name="strandDirection" type="select" label="Direction of strand (default: opposite strand for Illumina, same for SOLiD)">
+		<option value="0" selected="True">Default</option>
+		<option value="1">Same strand</option>
+		<option value="2">Opposite strand</option>
+	</param>
+	<param name="loFirstread" size="4" type="text" value="70">
+		<label>length of the first read </label>
+	</param>
+	<param name="loSecondread" size="4" type="text" value="70">
+		<label>length of the second read </label>
+	</param>
+	<param name="eRateFirstread" size="4" type="text" value="0.020">
+		<label>base/color error rate of the first read</label>
+	</param>
+	<param name="eRateSecondread" size="4" type="text" value="0.020">
+		<label>base/color error rate of the second read</label>
+	</param>
+	<param name="innerDist" size="4" type="text" value="500">
+		<label>inner distance between the two ends</label>
+	</param>
+	<param name="stDev" size="4" type="text" value="50">
+		<label>Standard deviation</label>
+	</param>	
+	<param name="rateOfMut" size="4" type="text" value="0.0010">
+		<label>rate of mutations</label>
+	</param>
+	<param name="rateOfIndels" size="4" type="text" value="0.10">
+		<label>fraction of indels </label>
+	</param>
+	<param name="probExtRead" size="4" type="text" value="0.30">
+		<label>probability an indel is extended</label>
+	</param>
+	<param name="probRandRead" size="4" type="text" value="0.10">
+		<label>probability of a random DNA read</label>
+	</param>
+	<param name="maxAllowN" size="4" type="text" value="0">
+		<label>maximum number of Ns allowed in a given read</label>
+	</param>
+	<param name="colorSpace" type="boolean" truevalue="-c" falsevalue="" checked="False" label="generate reads in color space (SOLiD reads)"/>
+	<param name="haploMode" type="boolean" truevalue="-h" falsevalue="" checked="False" label="Haplotype mode"/>
+   </inputs>
+ 
+  <outputs>
+    <data format="fastqsanger" name="outputSingleReads"/>
+    <data format="fastqsanger" name="outputPEFirst"/>
+    <data format="fastqsanger" name="outputPESecond"/>
+    <data format="text" name="outputMutations"/>
+  </outputs>
+ 
+  <tests>
+    <test>
+      <param name="input" value="extract_genomic_dna_out1.fasta" />
+      <param name="inputNumberOfClasses" value="50" />
+      <output format="input" name="histogramResult.text" />
+    </test>
+  </tests>
+ 
+  <help>
+This tools simulate reads from a given fasta file.
+  </help>
+ 
+</tool>
