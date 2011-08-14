@@ -21,3 +21,14 @@ to their appropriate installation directories:
  dwgsim
  dwgsim_eval
  dwgims_pileup_eval.pl
+
+=== DWGSIM with Galaxy ===
+
+DWGSIM can be incorporated into galaxy.
+
+1. Copy over the wrapper scripts:
+  cp scripts/galaxy/dwgsim_wrapper.* galaxy-dist/tools/sr_mapping
+2. Add to the list of available tools.
+  2a. Open galaxy-dist/tool_conf.xml 
+  2b. At the end of the NGS: mapping section, add the following:
+    <tool file="sr_mapping/dwgsim_wrapper.xml" />
