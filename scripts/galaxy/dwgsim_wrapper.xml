@@ -78,7 +78,7 @@
  
   <help>
 This tools simulate reads from a given fasta file.
-For more information, please see https://sourceforge.net/apps/mediawiki/dnaa/index.php?title=Whole_Genome_Simulation#Evaluating_mapping_-_dwgsim_eval
+For more information, please see https://sourceforge.net/apps/mediawiki/dnaa/index.php?title=Whole_Genome_Simulation
   </help>
  
 </tool>

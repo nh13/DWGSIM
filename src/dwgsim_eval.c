@@ -19,15 +19,15 @@ print_usage()
   fprintf(stderr, "\t-b\t\talignments are from BWA\n");
   fprintf(stderr, "\t-c\t\tcolor space alignments\n");
   fprintf(stderr, "\t-d\tINT\tdivide quality/alignment score by this factor\n");
-  fprintf(stderr, "\t-e\tINT\tprint only alignments with the number of specified errors\n");
-  fprintf(stderr, "\t-i\t\tprint only alignments with indels\n");
   fprintf(stderr, "\t-g\t\tgap \"wiggle\"\n");
   fprintf(stderr, "\t-n\tINT\tnumber of raw input paired-end reads (otherwise, inferred from all SAM records present).\n");
-  fprintf(stderr, "\t-p\t\tprint incorrect alignments\n");
-  fprintf(stderr, "\t-q\tINT\tconsider only alignments with this mapping quality or greater.\n");
+  fprintf(stderr, "\t-q\tINT\tconsider only alignments with this mapping quality or greater\n");
   fprintf(stderr, "\t-z\t\tinput contains only single end reads\n");
-  fprintf(stderr, "\t-s\tINT\tprint only alignments with the number of specified SNPs\n");
   fprintf(stderr, "\t-S\t\tinput is SAM\n");
+  fprintf(stderr, "\t-p\t\tprint incorrect alignments\n");
+  fprintf(stderr, "\t-s\tINT\tconsider only alignments with the number of specified SNPs\n");
+  fprintf(stderr, "\t-e\tINT\tconsider only alignments with the number of specified errors\n");
+  fprintf(stderr, "\t-i\t\tconsider only alignments with indels\n");
   fprintf(stderr, "\t-h\t\tprints this help message\n");
   return 1;
 }
@@ -111,16 +111,16 @@ main(int argc, char *argv[])
         case 'b': args.b = 1; break;
         case 'c': args.c = 1; break;
         case 'd': args.d = atoi(optarg); break;
-        case 'e': args.e = atoi(optarg); break;
         case 'g': args.g = atoi(optarg); break;
         case 'h': return print_usage(); break;
-        case 'i': args.i = 1; break;
         case 'n': args.n = atoi(optarg); break;
-        case 'p': args.p = 1; break;
         case 'q': args.q = atoi(optarg); break;
-        case 's': args.s = atoi(optarg); break;
         case 'z': args.z = 1; break;
         case 'S': args.S = 1; break;
+        case 'p': args.p = 1; break;
+        case 's': args.s = atoi(optarg); break;
+        case 'e': args.e = atoi(optarg); break;
+        case 'i': args.i = 1; break;
         default: fprintf(stderr, "Unrecognized option: -%c\n", c); return 1;
       }
   }

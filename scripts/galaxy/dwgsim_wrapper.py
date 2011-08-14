@@ -4,26 +4,26 @@
 Runs DWGSIM
 
 usage: dwgsim_wrapper.py [options]
-    -e,errorOne=e: base/color error rate of the first read [0.020]
-    -E,errorTwo=E: base/color error rate of the second read [0.020]
-    -d,innertDist=d: inner distance between the two ends [500]
-    -s,stdev=s: standard deviation [50]
-    -N,numReads=N: number of read pairs [1000000]
-    -1,lengthOne=1: length of the first read [70]
-    -2,lengthTwo=2: length of the second read [70]
-    -r,mutRate=r: rate of mutations [0.0010]
-    -R,fracIndels=R: fraction of indels [0.10]
-    -X,indelExt=X: probability an indel is extended [0.30]
-    -y,randProb=y: probability of a random DNA read [0.10]
-    -n,maxN=n: maximum number of Ns allowed in a given read [0]
-    -c,colorSpace=c: generate reads in color space (SOLiD reads)
-    -S,strand=S: strand 0: default, 1: same strand, 2: opposite strand
-    -H,haploid=H: haploid mode
-    -f,fasta=f: the reference genome FASTA
-    -3,outputBFAST=3: the BFAST output FASTQ
-    -4,outputBWA1=4: the first BWA output FASTQ
-    -5,outputBWA2=5: the second BWA output FASTQ
-    -6,outputMutations=6: the output mutations TXT
+    -e,--errorOne=e: base/color error rate of the first read [0.020]
+    -E,--errorTwo=E: base/color error rate of the second read [0.020]
+    -d,--innertDist=d: inner distance between the two ends [500]
+    -s,--stdev=s: standard deviation [50]
+    -N,--numReads=N: number of read pairs [1000000]
+    -1,--lengthOne=1: length of the first read [70]
+    -2,--lengthTwo=2: length of the second read [70]
+    -r,--mutRate=r: rate of mutations [0.0010]
+    -R,--fracIndels=R: fraction of indels [0.10]
+    -X,--indelExt=X: probability an indel is extended [0.30]
+    -y,--randProb=y: probability of a random DNA read [0.10]
+    -n,--maxN=n: maximum number of Ns allowed in a given read [0]
+    -c,--colorSpace=c: generate reads in color space (SOLiD reads)
+    -S,--strand=S: strand 0: default, 1: same strand, 2: opposite strand
+    -H,--haploid=H: haploid mode
+    -f,--fasta=f: the reference genome FASTA
+    -3,--outputBFAST=3: the BFAST output FASTQ
+    -4,--outputBWA1=4: the first BWA output FASTQ
+    -5,--outputBWA2=5: the second BWA output FASTQ
+    -6,--outputMutations=6: the output mutations TXT
 """
 
 import optparse, os, shutil, subprocess, sys, tempfile
@@ -32,7 +32,7 @@ def stop_err( msg ):
     sys.stderr.write( '%s\n' % msg )
     sys.exit()
 
-def run_processess ( cmd, name, tmp_dir, buffsize ):
+def run_process ( cmd, name, tmp_dir, buffsize ):
     try:
         tmp = tempfile.NamedTemporaryFile( dir=tmp_dir ).name
         tmp_stderr = open( tmp, 'wb' )
@@ -142,16 +142,16 @@ def __main__():
         # need to nest try-except in try-finally to handle 2.4
         try:
             # dwgsim
-            run_processess ( dwgsim_cmd, 'dwgsim', tmp_dir, buffsize )
+            run_process ( dwgsim_cmd, 'dwgsim', tmp_dir, buffsize )
             # Move files
             cmd = 'mv ' + tmp_dir + '/' + dwgsim_output_prefix + '.mutations.txt' + ' ' + options.outputMutations
-            run_processess ( cmd, 'mv #1', tmp_dir, buffsize )
+            run_process ( cmd, 'mv #1', tmp_dir, buffsize )
             cmd = 'mv ' + tmp_dir + '/' + dwgsim_output_prefix + '.bfast.fastq' + ' ' + options.outputBFAST
-            run_processess ( cmd, 'mv #2', tmp_dir, buffsize )
+            run_process ( cmd, 'mv #2', tmp_dir, buffsize )
             cmd = 'mv ' + tmp_dir + '/' + dwgsim_output_prefix + '.bwa.read1.fastq' + ' ' + options.outputBWA1
-            run_processess ( cmd, 'mv #3', tmp_dir, buffsize )
+            run_process ( cmd, 'mv #3', tmp_dir, buffsize )
             cmd = 'mv ' + tmp_dir + '/' + dwgsim_output_prefix + '.bwa.read2.fastq' + ' ' + options.outputBWA2
-            run_processess ( cmd, 'mv #4', tmp_dir, buffsize )
+            run_process ( cmd, 'mv #4', tmp_dir, buffsize )
             # check that there are results in the output file
             check_output ( options.outputMutations, True )
             check_output ( options.outputBFAST, False )

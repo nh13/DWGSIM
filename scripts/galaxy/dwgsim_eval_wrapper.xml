@@ -1,0 +1,73 @@
+<tool id="dwgsim" name="Evaluate simulated reads" version="1.0.0">
+  <description>from a SAM/BAM file using dwgsim_eval</description>
+  <command interpreter="python">
+	  if 'sam' == input.ext:
+		  dwgsim_wrapper.py \
+		  $alignmentScore \
+		  $bwa \
+		  $colorSpace \
+		  -d $scoreFactor \
+		  -g $wiggle \
+		  -n $numReads \
+		  -q $minMapq \
+		  $singleEnd \
+		  $printIncorrect \
+		  -s $numSnps \
+		  -e $numErrors \
+		  $indels \
+		  -s $input \
+		  -o $output
+      else:
+		  dwgsim_wrapper.py \
+		  $alignmentScore \
+		  $bwa \
+		  $colorSpace \
+		  -d $scoreFactor \
+		  -g $wiggle \
+		  -n $numReads \
+		  -q $minMapq \
+		  $singleEnd \
+		  $printIncorrect \
+		  -s $numSnps \
+		  -e $numErrors \
+		  $indels \
+		  -b $input \
+		  -o $output
+	       
+  </command>
+  <inputs>
+	<param format="sam,bam" name="input" type="data" label="SAM/BAM file to evaluate"/>
+	<param name="alignmentScore" type="boolean" truevalue="-a" falsevalue="" checked="False" label="split alignments by alignment score instead of mapping quality"/>
+	<param name="bwa" type="boolean" truevalue="-b" falsevalue="" checked="False" label="alignments are from BWA"/>
+	<param name="colorSpace" type="boolean" truevalue="-c" falsevalue="" checked="False" label="color space alignments"/>
+	<param name="scoreFactor" size="4" type="text" value="1">
+		<label>divide quality/alignment score by this factor</label>
+	</param> 
+	<param name="wiggle" size="4" type="text" value="5">
+		<label>gap "wiggle"</label>
+	</param> 
+	<param name="numReads" size="4" type="text" value="-1">
+		<label>number of raw input paired-end reads (otherwise, inferred from all SAM records present)</label>
+	</param>
+	<param name="minMapq" size="4" type="text" value="0">
+		<label>consider only alignments with this mapping quality or greater</label>
+	</param>
+	<param name="singleEnd" type="boolean" truevalue="-z" falsevalue="" checked="False" label="input contains only single end reads"/>
+	<param name="printIncorrect" type="boolean" truevalue="-p" falsevalue="" checked="False" label="print incorrect alignments"/>
+	<param name="numSnps" size="4" type="text" value="-1">
+		<label>consider only alignments with the number of specified SNPs</label>
+	</param>
+	<param name="numErrors" size="4" type="text" value="-1">
+		<label>consider only alignments with the number of specified errors</label>
+	</param>
+	<param name="indels" type="boolean" truevalue="-i"  falsevalue="" checked="False" label="consider only alignments with indels"/>
+   </inputs>
+  <outputs>
+    <data format="text" name="output"/>
+  </outputs>
+ 
+  <help>
+	  This tools evaluates simulate reads from DWGSIM.  For more information, please see https://sourceforge.net/apps/mediawiki/dnaa/index.php?title=Whole_Genome_Simulation#Evaluating_mapping_-_dwgsim_eval
+  </help>
+ 
+</tool>
