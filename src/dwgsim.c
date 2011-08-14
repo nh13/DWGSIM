@@ -596,7 +596,7 @@ void dwgsim_core(FILE *fpout0, FILE *fpout1, FILE *fpout2, FILE *fpout3, FILE *f
       uint64_t n_pairs;
       n_ref--;
       if(0 == n_ref) {
-          n_pairs = n_sim;
+          n_pairs = N - n_sim;
       }
       else {
           n_pairs = (uint64_t)((long double)l / tot_len * N + 0.5);
@@ -958,7 +958,7 @@ int main(int argc, char *argv[])
   size_l = size_r = 70;
   max_n = MAX_N;
   strandedness = 0;
-  while ((c = getopt(argc, argv, "e:E:d:s:N:1:2:r:R:n:y:HX:cS:")) >= 0) {
+  while ((c = getopt(argc, argv, "d:s:N:1:2:e:E:r:R:X:cS:n:y:H")) >= 0) {
       switch (c) {
         case 'd': dist = atoi(optarg); break;
         case 's': std_dev = atoi(optarg); break;
