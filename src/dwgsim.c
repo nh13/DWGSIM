@@ -958,7 +958,7 @@ int main(int argc, char *argv[])
   size_l = size_r = 70;
   max_n = MAX_N;
   strandedness = 0;
-  while ((c = getopt(argc, argv, "e:E:d:s:N:1:2:r:R:n:y:hX:cS:")) >= 0) {
+  while ((c = getopt(argc, argv, "e:E:d:s:N:1:2:r:R:n:y:HX:cS:")) >= 0) {
       switch (c) {
         case 'd': dist = atoi(optarg); break;
         case 's': std_dev = atoi(optarg); break;
@@ -974,7 +974,7 @@ int main(int argc, char *argv[])
         case 'S': strandedness = atoi(optarg); break;
         case 'n': max_n = atoi(optarg); break;
         case 'y': RAND_READ = atof(optarg); break;
-        case 'h': is_hap = 1; break;
+        case 'H': is_hap = 1; break;
         default: fprintf(stderr, "Unrecognized option: -%c\n", c); return 1;
       }
   }
