@@ -1,0 +1,24 @@
+Welcome to DWGSIM
+
+=== Prerequisites ===
+
+==== SAMtools ====
+SAMtools version >=0.1.7 is required.  Please find SAMtools
+at http://samtools.sourceforge.net
+
+Download the source code and place it in the root 
+directory.  After, execute the following commands:
+ tar -zxvf samtools-0.1.7.tar.gz
+ ln -s samtools-0.1.7 samtools
+
+=== Building DWGSIM ===
+
+
+To build DWGSIM, execute the following commands:
+ make
+
+To install DWGSIM, after building, copy the following binaries
+to their appropriate installation directories:
+ dwgsim
+ dwgsim_eval
+ dwgims_pileup_eval.pl
