@@ -11,24 +11,30 @@
 #include "samtools/sam.h"
 #include "dwgsim_eval.h"
 
+#define __IS_TRUE(_val) ((_val == 1) ? "True" : "False")
+
 int 
-print_usage()
+print_usage(dwgsim_eval_args_t *args)
 {
   fprintf(stderr, "Usage: dwgsim_eval [options] <in.sam/in.bam>\n");
-  fprintf(stderr, "\t-a\t\tsplit alignments by alignment score instead of mapping quality\n");
-  fprintf(stderr, "\t-b\t\talignments are from BWA\n");
-  fprintf(stderr, "\t-c\t\tcolor space alignments\n");
-  fprintf(stderr, "\t-d\tINT\tdivide quality/alignment score by this factor\n");
-  fprintf(stderr, "\t-g\t\tgap \"wiggle\"\n");
-  fprintf(stderr, "\t-n\tINT\tnumber of raw input paired-end reads (otherwise, inferred from all SAM records present).\n");
-  fprintf(stderr, "\t-q\tINT\tconsider only alignments with this mapping quality or greater\n");
-  fprintf(stderr, "\t-z\t\tinput contains only single end reads\n");
-  fprintf(stderr, "\t-S\t\tinput is SAM\n");
-  fprintf(stderr, "\t-p\t\tprint incorrect alignments\n");
-  fprintf(stderr, "\t-s\tINT\tconsider only alignments with the number of specified SNPs\n");
-  fprintf(stderr, "\t-e\tINT\tconsider only alignments with the number of specified errors\n");
-  fprintf(stderr, "\t-i\t\tconsider only alignments with indels\n");
-  fprintf(stderr, "\t-h\t\tprints this help message\n");
+  fprintf(stderr, "\t-a\tINT\tsplit by [%d]:\n", args->a);
+  fprintf(stderr, "\t\t\t\t\t0: by mapping quality\n");
+  fprintf(stderr, "\t\t\t\t\t1: by alignment score\n");
+  fprintf(stderr, "\t\t\t\t\t2: by suboptimal alignment score\n");
+  fprintf(stderr, "\t\t\t\t\t3: by alignment score - suboptimal alignment score\n");
+  fprintf(stderr, "\t-b\t\talignments are from BWA [%s]\n", __IS_TRUE(args->b));
+  fprintf(stderr, "\t-c\t\tcolor space alignments [%s]\n", __IS_TRUE(args->c));
+  fprintf(stderr, "\t-d\tINT\tdivide quality/alignment score by this factor [%d]\n", args->d);
+  fprintf(stderr, "\t-g\t\tgap \"wiggle\" [%d]\n", args->g);
+  fprintf(stderr, "\t-n\tINT\tnumber of raw input paired-end reads (otherwise, inferred from all SAM records present) [%d]\n", args->n);
+  fprintf(stderr, "\t-q\tINT\tconsider only alignments with this mapping quality or greater [%d]\n", args->q);
+  fprintf(stderr, "\t-z\t\tinput contains only single end reads [%s]\n", __IS_TRUE(args->z));
+  fprintf(stderr, "\t-S\t\tinput is SAM [%s]\n", __IS_TRUE(args->S));
+  fprintf(stderr, "\t-p\t\tprint incorrect alignments [%s]\n", __IS_TRUE(args->p));
+  fprintf(stderr, "\t-s\tINT\tconsider only alignments with the number of specified SNPs [%d]\n", args->s);
+  fprintf(stderr, "\t-e\tINT\tconsider only alignments with the number of specified errors [%d]\n", args->e);
+  fprintf(stderr, "\t-i\t\tconsider only alignments with indels [%s]\n", __IS_TRUE(args->i));
+  fprintf(stderr, "\t-h\t\tprint this help message\n");
   return 1;
 }
 
@@ -112,7 +118,7 @@ main(int argc, char *argv[])
         case 'c': args.c = 1; break;
         case 'd': args.d = atoi(optarg); break;
         case 'g': args.g = atoi(optarg); break;
-        case 'h': return print_usage(); break;
+        case 'h': return print_usage(&args); break;
         case 'n': args.n = atoi(optarg); break;
         case 'q': args.q = atoi(optarg); break;
         case 'z': args.z = 1; break;
@@ -126,7 +132,7 @@ main(int argc, char *argv[])
   }
 
   if(argc == optind) {
-      return print_usage();
+      return print_usage(&args);
   }
 
   run(&args, argc - optind, argv + optind);
@@ -236,7 +242,7 @@ process_bam(dwgsim_eval_counts_t *counts,
             samfile_t *fp_out)
 {
   char *FnName="process_bam";
-  int32_t qual=INT_MIN, alignment_score=INT_MIN, left;
+  int32_t left, metric=INT_MIN;
   char *chr=NULL;
   char *name=NULL;
   char chr_name[1028]="\0";
@@ -272,19 +278,46 @@ process_bam(dwgsim_eval_counts_t *counts,
 
   // get metric value
   if(0 == args->a) {
-      qual = (b->core.qual / args->d); 
-      if(DWGSIM_EVAL_MAXQ < qual) qual = DWGSIM_EVAL_MAXQ;
+      metric = (b->core.qual / args->d); 
+      if(DWGSIM_EVAL_MAXQ < metric) metric = DWGSIM_EVAL_MAXQ;
+  }
+  else if((BAM_FUNMAP & b->core.flag) || 0 == b->core.qual) { // unmapped or zero quality
+      metric = DWGSIM_EVAL_MINAS;
   }
   else {
-      uint8_t *aux = bam_aux_get(b, "AS");
-      if(NULL != aux) {
-          alignment_score = (bam_aux2i(aux) / args->d);
-          if(alignment_score < DWGSIM_EVAL_MINAS) alignment_score = DWGSIM_EVAL_MINAS;
+      uint8_t *aux_AS=NULL, *aux_XS=NULL;
+      metric = DWGSIM_EVAL_MINAS+1;
+      if(1 == args->a || 3 == args->a) {
+          aux_AS = bam_aux_get(b, "AS");
+          if(NULL == aux_AS) {
+              metric = DWGSIM_EVAL_MINAS;
+          }
       }
-      else { // no alignment score present
-          alignment_score = DWGSIM_EVAL_MINAS;
+      if(2 == args->a || 3 == args->a) {
+          aux_XS = bam_aux_get(b, "XS");
+          if(NULL == aux_XS) {
+              metric = DWGSIM_EVAL_MINAS;
+          }
+      }
+      if(metric != DWGSIM_EVAL_MINAS) {
+          switch(args->a) {
+            case 1:
+              metric = bam_aux2i(aux_AS);
+              break;
+            case 2:
+              metric = bam_aux2i(aux_XS);
+              break;
+            case 3:
+              metric = bam_aux2i(aux_AS) - bam_aux2i(aux_XS);
+              break;
+            default:
+              metric = DWGSIM_EVAL_MINAS;
+              break;
+          }
       }
   }
+  metric /= args->d;
+  if(metric < DWGSIM_EVAL_MINAS) metric = DWGSIM_EVAL_MINAS;
 
   if(1 == args->i) { // indels only
       if(1 == args->z || (b->core.flag & BAM_FREAD1)) {
@@ -344,7 +377,7 @@ process_bam(dwgsim_eval_counts_t *counts,
       }
   }
 
-  dwgsim_eval_counts_add(counts, (0 == args->a) ? qual : alignment_score, actual_value, predicted_value);
+  dwgsim_eval_counts_add(counts, metric, actual_value, predicted_value);
 
   // print incorrect alignments
   if(1 == args->p && DWGSIM_EVAL_MAPPED_INCORRECTLY == predicted_value) {
