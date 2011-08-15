@@ -114,20 +114,6 @@ const uint8_t nst_nt4_table[256] = {
     } 														\
 } while (0)
 
-#define __gen_errors(_cur_seq, _j, _start, _iter, _len) do { \
-    for (i = (_start); 0 <= i && i < _len; _iter) { \
-        mut_t c = _cur_seq[_j][i]; \
-        if (c >= 4) c = 4; \
-        else if(drand48() < e[_j]->start + e[_j]->by*i) { \
-            c = (c + (mut_t)(drand48() * 3.0 + 1)) & 3; \
-            ++n_err[_j]; \
-            if(0 == i) ++n_err_first[_j]; \
-        } \
-        _cur_seq[_j][i] = c; \
-    } \
-} while(0)
-
-
 /* Simple normal random number generator, copied from genran.c */
 
 double ran_normal()
@@ -249,11 +235,171 @@ static double MUT_RATE = 0.001;
 static double INDEL_FRAC = 0.1;
 static double INDEL_EXTEND = 0.3;
 static double RAND_READ = 0.1;
-/* 0 - Illumina
- * 1 = SOLiD 2-base
- * */
-static int IS_SOLID = 0;
+enum {
+    ILLUMINA=0,
+    SOLID=1,
+    IONTORRENT=2
+};
+static int DATA_TYPE = ILLUMINA;
 static int MAX_N = 0;
+static uint8_t FLOW_ORDER[1024]="TACG";
+static int FLOW_ORDER_LEN = 4;
+
+#define __gen_errors_mismatches(_cur_seq, _j, _start, _iter, _len) do { \
+    for (i = (_start); 0 <= i && i < _len; _iter) { \
+        mut_t c = _cur_seq[_j][i]; \
+        if (c >= 4) c = 4; \
+        else if(drand48() < e[_j]->start + e[_j]->by*i) { \
+            c = (c + (mut_t)(drand48() * 3.0 + 1)) & 3; \
+            ++n_err[_j]; \
+            if(0 == i) ++n_err_first[_j]; \
+        } \
+        _cur_seq[_j][i] = c; \
+    } \
+} while(0)
+
+static int32_t
+generate_errors_flows(uint8_t **seq, int32_t *mem, int32_t len, uint8_t strand, double e, int32_t *_n_err)
+{
+  int32_t i, j, k, hp_l, flow_i, n_err;
+  uint8_t prev_c, c;
+
+  // remove Ns
+  for(i=0;i<len;i++) {
+      if(4 <= (*seq)[i]) {
+          (*seq)[i] = 0;
+      }
+  }
+
+  if(1 == strand) {
+      for(i=0;i<len>>1;i++) {
+          c = (*seq)[i];
+          (*seq)[i] = (*seq)[len-i-1];
+          (*seq)[len-i-1] = c;
+      }
+  }
+
+  // skip forward to the first flow
+  for(i=0;i<FLOW_ORDER_LEN;i++) {
+      c = (4 <= (*seq)[0]) ? 0 : (*seq)[0];
+      if(c == FLOW_ORDER[i]) {
+          break;
+      }
+  }
+  assert(FLOW_ORDER_LEN != i);
+  flow_i = i;
+  // first pass: add errors in the current sequence (non-empty flows)
+  prev_c = 4;
+  for(i=0;i<len;i++) {
+      c = (4 <= (*seq)[i]) ? 0 : (*seq)[i];
+      while(c != FLOW_ORDER[flow_i]) { // skip paste empty flows
+          flow_i = (flow_i + 1) % FLOW_ORDER_LEN;
+      }
+      if(prev_c != c) { // new hp
+          n_err = 0;
+          while(drand48() < e) { // how many bases should we insert/delete
+              n_err++;
+          }
+          if(0 < n_err) {
+              if(drand48() < 0.5) { // insert
+                  // more memory
+                  while((*mem) <= len + n_err) {
+                      (*mem) <<= 1; // double
+                      (*seq) = realloc((*seq), sizeof(uint8_t) * (*mem));
+                  }
+                  // shift up
+                  for(j=len-1;i<=j;j--) {
+                      (*seq)[j+n_err] = (*seq)[j];
+                  }
+                for(j=i;j<i+n_err;j++) {
+                      (*seq)[j] = c;
+                  }
+                  len += n_err;
+              }
+              else {
+                  int32_t next_c = 4;
+                  // get the hp length
+                  for(j=i,hp_l=0;j<len;j++,hp_l++) {
+                      next_c = (4 <= (*seq)[j]) ? 0 : (*seq)[j];
+                      if(c != next_c) {
+                          break;
+                      }
+                  }
+                  // bound errors by the hp length
+                  n_err = (hp_l < n_err) ? hp_l : n_err;
+                  // shift down
+                  for(j=i;j<len-n_err;j++) {
+                      (*seq)[j] = (*seq)[j+n_err];
+                  }
+                  len -= n_err;
+                  // Note: we need to make sure that if we delete all the bases,
+                  // that the neighboring bases are not the same.  If they are,
+                  // we need to simulate a "dot-fill", whereby we add a
+                  // non-incorporating flow.
+                  if(n_err == hp_l && (0 == i || prev_c == next_c)) {
+                      j = 0;
+                      // get the number of subsequent flows until the next base
+                      while(next_c != FLOW_ORDER[(flow_i + j) % FLOW_ORDER_LEN]) { // skip paste empty flows
+                          j++;
+                      }
+                      assert(0 < j);
+                      // pick one to fill in
+                      k = (int)(drand48() * j);
+                      // shift up
+                      for(j=len-1;i<=j;j--) {
+                          (*seq)[j+1] = (*seq)[j];
+                      }
+                      // add the filled in base
+                      (*seq)[i] = FLOW_ORDER[(flow_i + k) % FLOW_ORDER_LEN];
+                      len++;
+                  }
+              }
+              (*_n_err) += n_err;
+          }
+          prev_c = c;
+      }
+  }
+
+  // second pass: add empty flows
+  prev_c = 4;
+  for(i=0;i<len;i++) {
+      c = (4 <= (*seq)[i]) ? 0 : (*seq)[i];
+      while(c != FLOW_ORDER[flow_i]) {
+          n_err = 0;
+          while(drand48() < e) {
+              n_err++;
+          }
+          if(0 < n_err) {  // insert
+              // more memory
+              while((*mem) <= len + n_err) {
+                  (*mem) <<= 1; // double
+                  (*seq) = realloc((*seq), sizeof(uint8_t) * (*mem));
+              }
+              // shift up
+              for(j=len-1;i<=j;j--) {
+                  (*seq)[j+n_err] = (*seq)[j];
+              }
+              // copy
+              for(j=i;j<i+n_err;j++) {
+                  (*seq)[j] = FLOW_ORDER[flow_i];
+              }
+              len += n_err;
+              (*_n_err) += n_err;
+          }
+          flow_i = (flow_i + 1) % FLOW_ORDER_LEN;
+      }
+  }
+
+  if(1 == strand) {
+      for(i=0;i<len>>1;i++) {
+          c = (*seq)[i];
+          (*seq)[i] = (*seq)[len-i-1];
+          (*seq)[len-i-1] = c;
+      }
+  }
+
+  return len;
+}
 
 void maq_mut_diref(const seq_t *seq, int is_hap, mutseq_t *hap1, mutseq_t *hap2)
 {
@@ -554,9 +700,10 @@ void dwgsim_core(FILE *fpout0, FILE *fpout1, FILE *fpout2, FILE *fpout3, FILE *f
   uint64_t tot_len, ii=0, ctr=0;
   int i, l, n_ref;
   char name[256], *qstr;
-  int size[2], prev_skip=0;
+  int size[2], prev_skip=0, qstr_l=0;
   int num_n[2];
   uint8_t *tmp_seq[2]={NULL,NULL};
+  int32_t tmp_seq_mem[2]={0,0};
   uint64_t n_sim = 0;
   mut_t *target;
   error_t *e[2]={NULL,NULL};
@@ -567,9 +714,11 @@ void dwgsim_core(FILE *fpout0, FILE *fpout1, FILE *fpout2, FILE *fpout3, FILE *f
   srand48(time(0));
   seq_set_block_size(0x1000000);
   l = size_l > size_r? size_l : size_r;
-  qstr = (char*)calloc(l+1, 1);
+  qstr_l = l;
+  qstr = (char*)calloc(qstr_l+1, 1);
   tmp_seq[0] = (uint8_t*)calloc(l+2, 1);
   tmp_seq[1] = (uint8_t*)calloc(l+2, 1);
+  tmp_seq_mem[0] = tmp_seq_mem[1] = l+2;
   size[0] = size_l; size[1] = size_r;
 
   tot_len = n_ref = 0;
@@ -601,7 +750,7 @@ void dwgsim_core(FILE *fpout0, FILE *fpout1, FILE *fpout2, FILE *fpout3, FILE *f
       else {
           n_pairs = (uint64_t)((long double)l / tot_len * N + 0.5);
       }
-      if (l < dist + 3 * std_dev) {
+      if (0 < size_r && l < dist + 3 * std_dev) {
           if(0 == prev_skip) fprintf(stderr, "\n");
           prev_skip = 1;
           fprintf(stderr, "[dwgsim_core] skip sequence '%s' as it is shorter than %d!\n", name, dist + 3 * std_dev);
@@ -635,11 +784,11 @@ void dwgsim_core(FILE *fpout0, FILE *fpout1, FILE *fpout2, FILE *fpout3, FILE *f
                   pos = (int)((l - d + 1) * drand48());
               } while (pos < 0 || pos >= seq.l || pos + d - 1 >= seq.l);
 
-              if(2 == strandedness || (0 == strandedness && 0 == IS_SOLID)) {
+              if(2 == strandedness || (0 == strandedness && ILLUMINA == DATA_TYPE)) {
                   // opposite strand by default for Illumina
                   strand[0] = 0; strand[1] = 1; 
               }
-              else if(1 == strandedness || (0 == strandedness && 1 == IS_SOLID)) {
+              else if(1 == strandedness || (0 == strandedness && (SOLID == DATA_TYPE || IONTORRENT == DATA_TYPE))) {
                   // same strands by default for SOLiD
                   strand[0] = 0; strand[1] = 0; 
               }
@@ -704,7 +853,7 @@ void dwgsim_core(FILE *fpout0, FILE *fpout1, FILE *fpout2, FILE *fpout3, FILE *f
                   continue;
               }
 
-              if(1 == IS_SOLID) {
+              if(SOLID == DATA_TYPE) {
                   // Convert to color sequence, use the first base as the adaptor
                   for (j = 0; j < 2; ++j) {
                       if(0 < s[j]) {
@@ -720,20 +869,26 @@ void dwgsim_core(FILE *fpout0, FILE *fpout1, FILE *fpout2, FILE *fpout3, FILE *f
               }
 
               // generate sequencing errors
-              if(0 < s[0]) {
-                  if(0 == strand[0]) { 
-                      __gen_errors(tmp_seq, 0, 0, ++i, s[0]); 
-                  }
-                  else { 
-                      __gen_errors(tmp_seq, 0, s[0]-1, --i, s[0]); 
-                  }
+              if(IONTORRENT == DATA_TYPE) {
+                  s[0] = generate_errors_flows(&tmp_seq[0], &tmp_seq_mem[0], s[0], strand[0], e[0]->start, &n_err[0]);
+                  s[1] = generate_errors_flows(&tmp_seq[1], &tmp_seq_mem[1], s[1], strand[1], e[1]->start, &n_err[1]);
               }
-              if(0 < s[1]) {
-                  if(0 == strand[1]) { 
-                      __gen_errors(tmp_seq, 1, 0, ++i, s[1]); 
+              else { // Illumina/SOLiD
+                  if(0 < s[0]) {
+                      if(0 == strand[0]) { 
+                          __gen_errors_mismatches(tmp_seq, 0, 0, ++i, s[0]); 
+                      }
+                      else { 
+                          __gen_errors_mismatches(tmp_seq, 0, s[0]-1, --i, s[0]); 
+                      }
                   }
-                  else { 
-                      __gen_errors(tmp_seq, 1, s[1]-1, --i, s[1]); 
+                  if(0 < s[1]) {
+                      if(0 == strand[1]) { 
+                          __gen_errors_mismatches(tmp_seq, 1, 0, ++i, s[1]); 
+                      }
+                      else { 
+                          __gen_errors_mismatches(tmp_seq, 1, s[1]-1, --i, s[1]); 
+                      }
                   }
               }
 
@@ -742,13 +897,17 @@ void dwgsim_core(FILE *fpout0, FILE *fpout1, FILE *fpout2, FILE *fpout3, FILE *f
                   if(s[j] <= 0) {
                       continue;
                   }
+                  if(IONTORRENT == DATA_TYPE && qstr_l < s[j]) {
+                      qstr_l = s[j];
+                      qstr = realloc(qstr, (1+qstr_l) * sizeof(char));
+                  }
                   for (i = 0; i < s[j]; ++i) {
                       qstr[i] = (int)(-10.0 * log(e[j]->start + e[j]->by*i) / log(10.0) + 0.499) + 33;
                   }
                   qstr[i] = 0;
                   // BWA
                   FILE *fpo = (0 == j) ? fpout2 : fpout3;
-                  if(0 == IS_SOLID) {
+                  if(ILLUMINA == DATA_TYPE || IONTORRENT == DATA_TYPE) {
                       fprintf(fpo, "@%s_%u_%u_%1u_%1u_%1u_%1u_%d:%d:%d_%d:%d:%d_%llx/%d\n", 
                               name, ext_coor[0]+1, ext_coor[1]+1, strand[0], strand[1], 0, 0,
                               n_err[0] - n_err_first[0], 
@@ -788,7 +947,7 @@ void dwgsim_core(FILE *fpout0, FILE *fpout1, FILE *fpout2, FILE *fpout3, FILE *f
                           name, ext_coor[0]+1, ext_coor[1]+1, strand[0], strand[1], 0, 0,
                           n_err[0], n_sub[0], n_indel[0], n_err[1], n_sub[1], n_indel[1],
                           (long long)ii);
-                  if(0 == IS_SOLID) {
+                  if(ILLUMINA == DATA_TYPE || IONTORRENT == DATA_TYPE) {
                       for (i = 0; i < s[j]; ++i)
                         fputc("ACGTN"[(int)tmp_seq[j][i]], fpout1);
                       fprintf(fpout1, "\n+\n%s\n", qstr);
@@ -810,13 +969,17 @@ void dwgsim_core(FILE *fpout0, FILE *fpout1, FILE *fpout2, FILE *fpout3, FILE *f
                   if(s[j] <= 0) {
                      continue;
                   } 
+                  if(IONTORRENT == DATA_TYPE && qstr_l < s[j]) {
+                      qstr_l = s[j];
+                      qstr = realloc(qstr, (1+qstr_l) * sizeof(char));
+                  }
                   // get random sequence
                   for(i=0;i<s[j];i++) {
                       tmp_seq[j][i] = (int)(drand48() * 4.0) & 3;
                       qstr[i] = (int)(-10.0 * log(e[j]->start + e[j]->by*i) / log(10.0) + 0.499) + 33;
                   }
                   qstr[i] = 0;
-                  if(1 == IS_SOLID) { // convert to color space
+                  if(SOLID == DATA_TYPE) { // convert to color space
                       if(0 < s[j]) {
                           c1 = 0; // adaptor 
                           for (i = 0; i < s[j]; ++i) {
@@ -829,7 +992,7 @@ void dwgsim_core(FILE *fpout0, FILE *fpout1, FILE *fpout2, FILE *fpout3, FILE *f
                   }
                   // BWA
                   FILE *fpo = (0 == j) ? fpout2 : fpout3;
-                  if(0 == IS_SOLID) {
+                  if(ILLUMINA == DATA_TYPE || IONTORRENT == DATA_TYPE) {
                       fprintf(fpo, "@%s_%u_%u_%1u_%1u_%1u_%1u_%d:%d:%d_%d:%d:%d_%llx/%d\n", 
                               "rand", 0, 0, 0, 0, 1, 1,
                               0, 0, 0, 0, 0, 0,
@@ -864,7 +1027,7 @@ void dwgsim_core(FILE *fpout0, FILE *fpout1, FILE *fpout2, FILE *fpout3, FILE *f
                           "rand", 0, 0, 0, 0, 1, 1,
                           0, 0, 0, 0, 0, 0,
                           (long long)ii);
-                  if(0 == IS_SOLID) {
+                  if(ILLUMINA == DATA_TYPE || IONTORRENT == DATA_TYPE) {
                       for (i = 0; i < s[j]; ++i)
                         fputc("ACGTN"[(int)tmp_seq[j][i]], fpout1);
                       fprintf(fpout1, "\n+\n%s\n", qstr);
@@ -910,6 +1073,14 @@ void get_error_rate(const char *str, error_t *e)
   }
 }
 
+static void check_option_int(int32_t val, int32_t min, int32_t max, char *opt)
+{
+  if(val < min || max < val) {
+      fprintf(stderr, "Error: command line option %s was out of range\n", opt);
+      exit(1);
+  }
+}
+
 static int simu_usage()
 {
   fprintf(stderr, "\n");
@@ -929,11 +1100,15 @@ static int simu_usage()
   fprintf(stderr, "         -X FLOAT      probability an indel is extended [%.2f]\n", INDEL_EXTEND);
   fprintf(stderr, "         -y FLOAT      probability of a random DNA read [%.2f]\n", RAND_READ);
   fprintf(stderr, "         -n INT        maximum number of Ns allowed in a given read [%d]\n", MAX_N);
-  fprintf(stderr, "         -c            generate reads in color space (SOLiD reads)\n");
-  fprintf(stderr, "         -S INT        generate reads\n");
-  fprintf(stderr, "                           0: default (opposite strand for Illumina, same strand for SOLiD)\n");
+  fprintf(stderr, "         -c INT        generate reads for [%d]:\n", DATA_TYPE);
+  fprintf(stderr, "                           0: Illumina\n");
+  fprintf(stderr, "                           1: SOLiD\n");
+  fprintf(stderr, "                           2: Ion Torrent\n");
+  fprintf(stderr, "         -S INT        generate reads [%d]:\n", DATA_TYPE);
+  fprintf(stderr, "                           0: default (opposite strand for Illumina, same strand for SOLiD/Ion Torrent)\n");
   fprintf(stderr, "                           1: same strand (mate pair)\n");
   fprintf(stderr, "                           2: opposite strand (paired end)\n");
+  fprintf(stderr, "         -f            the flow order for Ion Torrent data [%s]\n", FLOW_ORDER);
   fprintf(stderr, "         -H            haploid mode\n");
   fprintf(stderr, "         -h            print this message\n");
   fprintf(stderr, "\n");
@@ -945,7 +1120,7 @@ static int simu_usage()
 int main(int argc, char *argv[])
 {
   int64_t N;
-  int dist, std_dev, c, size_l, size_r, is_hap = 0, strandedness = 0;
+  int i, dist, std_dev, c, size_l, size_r, is_hap = 0, strandedness = 0;
   FILE *fpout0, *fpout1, *fpout2, *fpout3, *fp_fa, *fp_fai;
   error_t e1, e2;
   char fn_fai[1024]="\0";
@@ -958,7 +1133,7 @@ int main(int argc, char *argv[])
   size_l = size_r = 70;
   max_n = MAX_N;
   strandedness = 0;
-  while ((c = getopt(argc, argv, "d:s:N:1:2:e:E:r:R:X:cS:n:y:H")) >= 0) {
+  while ((c = getopt(argc, argv, "d:s:N:1:2:e:E:r:R:X:c:S:n:y:Hf:h")) >= 0) {
       switch (c) {
         case 'd': dist = atoi(optarg); break;
         case 's': std_dev = atoi(optarg); break;
@@ -970,18 +1145,38 @@ int main(int argc, char *argv[])
         case 'r': MUT_RATE = atof(optarg); break;
         case 'R': INDEL_FRAC = atof(optarg); break;
         case 'X': INDEL_EXTEND = atof(optarg); break;
-        case 'c': IS_SOLID = 1; break;
+        case 'c': DATA_TYPE = atoi(optarg); break;
         case 'S': strandedness = atoi(optarg); break;
         case 'n': max_n = atoi(optarg); break;
         case 'y': RAND_READ = atof(optarg); break;
+        case 'f': strcpy((char*)FLOW_ORDER, optarg); break;
         case 'H': is_hap = 1; break;
+        case 'h': return simu_usage();
         default: fprintf(stderr, "Unrecognized option: -%c\n", c); return 1;
       }
   }
   if (argc - optind < 1) return simu_usage();
 
+  check_option_int(DATA_TYPE, 0, 2, "-c");
+  check_option_int(strandedness, 0, 2, "-s");
+
+  FLOW_ORDER_LEN = strlen((char*)FLOW_ORDER);
+  for(i=0;i<FLOW_ORDER_LEN;i++) {
+      FLOW_ORDER[i] = nst_nt4_table[FLOW_ORDER[i]];
+  }
+
   e1.by = (e1.end - e1.start) / size_l;
   e2.by = (e2.end - e2.start) / size_r;
+  if(IONTORRENT == DATA_TYPE) {
+      if(e1.end != e1.start) {
+          fprintf(stderr, "End one: a uniform error rate must be given for Ion Torrent data");
+          return 1;
+      }
+      if(e2.end != e2.start) {
+          fprintf(stderr, "End two: a uniform error rate must be given for Ion Torrent data");
+          return 1;
+      }
+  }
 
   // Open files
   fp_fa =	xopen(argv[optind+0], "r");
