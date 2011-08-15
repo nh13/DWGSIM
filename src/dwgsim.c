@@ -46,6 +46,13 @@
 #define __gf_add(_x, _y) ((_x >= 4 || _y >= 4) ? 4 : (_x ^ _y))
 #define __IS_TRUE(_val) ((_val == 1) ? "True" : "False")
 
+double __drand48()
+{
+  double r = drand48();
+  fprintf(stderr, "r=%lf\n", r);
+  return r;
+}
+
 const uint8_t nst_nt4_table[256] = {
     4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4, 
     4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4, 
@@ -127,6 +134,7 @@ typedef struct {
     int8_t *flow_order;
     int32_t flow_order_len;
     int32_t is_hap;
+    int32_t seed;
     FILE *fp_mut;
     FILE *fp_bfast;
     FILE *fp_bwa1;
@@ -152,6 +160,7 @@ dwgsim_opt_t* dwgsim_opt_init()
   opt->max_n = 0;
   opt->flow_order = NULL;
   opt->flow_order_len = 0;
+  opt->seed = -1;
   opt->fp_mut = opt->fp_bfast = opt->fp_bwa1 = opt->fp_bwa2 = NULL;
   opt->fp_fa = opt->fp_fai = NULL;
 
@@ -223,8 +232,8 @@ double ran_normal()
   double fac, rsq, v1, v2; 
   if (iset == 0) {
       do { 
-          v1 = 2.0 * drand48() - 1.0;
-          v2 = 2.0 * drand48() - 1.0; 
+          v1 = 2.0 * __drand48() - 1.0;
+          v2 = 2.0 * __drand48() - 1.0; 
           rsq = v1 * v1 + v2 * v2;
       } while (rsq >= 1.0 || rsq == 0.0);
       fac = sqrt(-2.0 * log(rsq) / rsq); 
@@ -313,8 +322,8 @@ FILE *err_xopen_core(const char *func, const char *fn, const char *mode)
     for (i = (_start); 0 <= i && i < _len; _iter) { \
         mut_t c = _cur_seq[_j][i]; \
         if (c >= 4) c = 4; \
-        else if(drand48() < e[_j]->start + e[_j]->by*i) { \
-            c = (c + (mut_t)(drand48() * 3.0 + 1)) & 3; \
+        else if(__drand48() < e[_j]->start + e[_j]->by*i) { \
+            c = (c + (mut_t)(__drand48() * 3.0 + 1)) & 3; \
             ++n_err[_j]; \
             if(0 == i) ++n_err_first[_j]; \
         } \
@@ -361,11 +370,11 @@ generate_errors_flows(dwgsim_opt_t *opt, uint8_t **seq, int32_t *mem, int32_t le
       }
       if(prev_c != c) { // new hp
           n_err = 0;
-          while(drand48() < e) { // how many bases should we insert/delete
+          while(__drand48() < e) { // how many bases should we insert/delete
               n_err++;
           }
           if(0 < n_err) {
-              if(drand48() < 0.5) { // insert
+              if(__drand48() < 0.5) { // insert
                   // more memory
                   while((*mem) <= len + n_err) {
                       (*mem) <<= 1; // double
@@ -408,7 +417,7 @@ generate_errors_flows(dwgsim_opt_t *opt, uint8_t **seq, int32_t *mem, int32_t le
                       }
                       assert(0 < j);
                       // pick one to fill in
-                      k = (int)(drand48() * j);
+                      k = (int)(__drand48() * j);
                       // shift up
                       for(j=len-1;i<=j;j--) {
                           (*seq)[j+1] = (*seq)[j];
@@ -430,7 +439,7 @@ generate_errors_flows(dwgsim_opt_t *opt, uint8_t **seq, int32_t *mem, int32_t le
       c = (4 <= (*seq)[i]) ? 0 : (*seq)[i];
       while(c != opt->flow_order[flow_i]) {
           n_err = 0;
-          while(drand48() < e) {
+          while(__drand48() < e) {
               n_err++;
           }
           if(0 < n_err) {  // insert
@@ -479,42 +488,42 @@ void maq_mut_diref(dwgsim_opt_t *opt, const seq_t *seq, mutseq_t *hap1, mutseq_t
       mut_t c;
       c = ret[0]->s[i] = ret[1]->s[i] = (mut_t)nst_nt4_table[(int)seq->s[i]];
       if (deleting) {
-          if (drand48() < opt->indel_extend) {
+          if (__drand48() < opt->indel_extend) {
               if (deleting & 1) ret[0]->s[i] |= DELETE|c;
               if (deleting & 2) ret[1]->s[i] |= DELETE|c;
               continue;
           } else deleting = 0;
       }
-      if (c < 4 && drand48() < opt->mut_rate) { // mutation
-          if (drand48() >= opt->indel_frac) { // substitution
-              double r = drand48();
+      if (c < 4 && __drand48() < opt->mut_rate) { // mutation
+          if (__drand48() >= opt->indel_frac) { // substitution
+              double r = __drand48();
               c = (c + (mut_t)(r * 3.0 + 1)) & 3;
-              if (opt->is_hap || drand48() < 0.333333) { // hom
+              if (opt->is_hap || __drand48() < 0.333333) { // hom
                   ret[0]->s[i] = ret[1]->s[i] = SUBSTITUTE|c;
               } else { // het
-                  ret[drand48()<0.5?0:1]->s[i] = SUBSTITUTE|c;
+                  ret[__drand48()<0.5?0:1]->s[i] = SUBSTITUTE|c;
               }
           } else { // indel
-              if (drand48() < 0.5) { // deletion
-                  if (opt->is_hap || drand48() < 0.3333333) { // hom-del
+              if (__drand48() < 0.5) { // deletion
+                  if (opt->is_hap || __drand48() < 0.3333333) { // hom-del
                       ret[0]->s[i] = ret[1]->s[i] = DELETE|c;
                       deleting = 3;
                   } else { // het-del
-                      deleting = drand48()<0.5?1:2;
+                      deleting = __drand48()<0.5?1:2;
                       ret[deleting-1]->s[i] = DELETE|c;
                   }
               } else { // insertion
                   mut_t num_ins = 0, ins = 0;
                   do {
                       num_ins++;
-                      ins = (ins << 2) | (mut_t)(drand48() * 4.0);
-                  } while (num_ins < ((ins_length_shift - muttype_shift) >> 1) && drand48() < opt->indel_extend);
+                      ins = (ins << 2) | (mut_t)(__drand48() * 4.0);
+                  } while (num_ins < ((ins_length_shift - muttype_shift) >> 1) && __drand48() < opt->indel_extend);
                   assert(0 < num_ins);
 
-                  if (opt->is_hap || drand48() < 0.333333) { // hom-ins
+                  if (opt->is_hap || __drand48() < 0.333333) { // hom-ins
                       ret[0]->s[i] = ret[1]->s[i] = (num_ins << ins_length_shift) | (ins << muttype_shift) | INSERT | c;
                   } else { // het-ins
-                      ret[drand48()<0.5?0:1]->s[i] = (num_ins << ins_length_shift) | (ins << muttype_shift) | INSERT | c;
+                      ret[__drand48()<0.5?0:1]->s[i] = (num_ins << ins_length_shift) | (ins << muttype_shift) | INSERT | c;
                   }
               }
           }
@@ -773,7 +782,6 @@ void dwgsim_core(dwgsim_opt_t * opt)
   e[0] = &opt->e1; e[1] = &opt->e2;
 
   INIT_SEQ(seq);
-  srand48(time(0));
   seq_set_block_size(0x1000000);
   l = opt->length1 > opt->length2? opt->length1 : opt->length2;
   qstr_l = l;
@@ -782,6 +790,8 @@ void dwgsim_core(dwgsim_opt_t * opt)
   tmp_seq[1] = (uint8_t*)calloc(l+2, 1);
   tmp_seq_mem[0] = tmp_seq_mem[1] = l+2;
   size[0] = opt->length1; size[1] = opt->length2;
+  
+  fprintf(stderr, "HERE -1 %lf\n", __drand48());
 
   tot_len = n_ref = 0;
   if(NULL != opt->fp_fai) {
@@ -801,6 +811,7 @@ void dwgsim_core(dwgsim_opt_t * opt)
   }
   fprintf(stderr, "[dwgsim_core] %d sequences, total length: %llu\n", n_ref, (long long)tot_len);
   rewind(opt->fp_fa);
+  fprintf(stderr, "HERE 0 %lf\n", __drand48());
 
   fprintf(stderr, "[dwgsim_core] Currently on: \n0");
   while ((l = seq_read_fasta(opt->fp_fa, &seq, name, 0)) >= 0) {
@@ -820,9 +831,13 @@ void dwgsim_core(dwgsim_opt_t * opt)
       }
       prev_skip = 0;
 
+      fprintf(stderr, "HERE 1 %lf\n", __drand48());
+
       // generate mutations and print them out
       maq_mut_diref(opt, &seq, rseq, rseq+1);
       maq_print_mutref(name, &seq, rseq, rseq+1, opt->fp_mut);
+
+      fprintf(stderr, "HERE 2 %lf\n", __drand48());
 
       for (ii = 0; ii != n_pairs; ++ii, ++ctr) { // the core loop
           if(0 == (ctr % 10000)) {
@@ -837,13 +852,13 @@ void dwgsim_core(dwgsim_opt_t * opt)
               
           s[0] = size[0]; s[1] = size[1];
 
-          if(opt->rand_read < drand48()) { 
+          if(opt->rand_read < __drand48()) { 
 
               do { // avoid boundary failure
                   ran = ran_normal();
                   ran = ran * opt->std_dev + opt->dist;
                   d = (int)(ran + 0.5);
-                  pos = (int)((l - d + 1) * drand48());
+                  pos = (int)((l - d + 1) * __drand48());
               } while (pos < 0 || pos >= seq.l || pos + d - 1 >= seq.l);
 
               if(2 == opt->strandedness || (0 == opt->strandedness && ILLUMINA == opt->data_type)) {
@@ -859,14 +874,14 @@ void dwgsim_core(dwgsim_opt_t * opt)
                   assert(1 == 0);
               }
 
-              if (drand48() < 0.5) { // which strand ?
+              if (__drand48() < 0.5) { // which strand ?
                   // Flip strands 
                   strand[0] = (1 + strand[0]) % 2;
                   strand[1] = (1 + strand[1]) % 2;
               }
 
               // generate the read sequences
-              target = rseq[drand48()<0.5?0:1].s; // haplotype from which the reads are generated
+              target = rseq[__drand48()<0.5?0:1].s; // haplotype from which the reads are generated
               n_sub[0] = n_sub[1] = n_indel[0] = n_indel[1] = n_err[0] = n_err[1] = 0;
               n_sub_first[0] = n_sub_first[1] = n_indel_first[0] = n_indel_first[1] = n_err_first[0] = n_err_first[1] = 0;
               num_n[0]=num_n[1]=0;
@@ -1037,7 +1052,7 @@ void dwgsim_core(dwgsim_opt_t * opt)
                   }
                   // get random sequence
                   for(i=0;i<s[j];i++) {
-                      tmp_seq[j][i] = (int)(drand48() * 4.0) & 3;
+                      tmp_seq[j][i] = (int)(__drand48() * 4.0) & 3;
                       qstr[i] = (int)(-10.0 * log(e[j]->start + e[j]->by*i) / log(10.0) + 0.499) + 33;
                   }
                   qstr[i] = 0;
@@ -1152,6 +1167,7 @@ static int simu_usage(dwgsim_opt_t *opt)
   fprintf(stderr, "                           2: opposite strand (paired end)\n");
   fprintf(stderr, "         -f STRING     the flow order for Ion Torrent data [%s]\n", (char*)opt->flow_order);
   fprintf(stderr, "         -H            haploid mode [%s]\n", __IS_TRUE(opt->is_hap));
+  fprintf(stderr, "         -z INT        random seed (-1 uses the current time) [%d]\n", opt->seed);
   fprintf(stderr, "         -h            print this message\n");
   fprintf(stderr, "\n");
   fprintf(stderr, "Note: For SOLiD mate pair reads and BFAST, the first read is F3 and the second is R3. For SOLiD mate pair reads\n");
@@ -1169,7 +1185,9 @@ int main(int argc, char *argv[])
   char fn_fai[1024]="\0";
   char fn_tmp[1024]="\0";
 
-  while ((c = getopt(argc, argv, "d:s:N:1:2:e:E:r:R:X:c:S:n:y:Hf:h")) >= 0) {
+  fprintf(stderr, "A=%lf B=%lf C=%lf\n", __drand48(), __drand48(), __drand48());
+
+  while ((c = getopt(argc, argv, "d:s:N:1:2:e:E:r:R:X:c:S:n:y:Hf:z:h")) >= 0) {
       switch (c) {
         case 'd': opt->dist = atoi(optarg); break;
         case 's': opt->std_dev = atof(optarg); break;
@@ -1191,6 +1209,7 @@ int main(int argc, char *argv[])
                   break;
         case 'H': opt->is_hap = 1; break;
         case 'h': return simu_usage(opt);
+        case 'z': opt->seed = atoi(optarg); break;
         default: fprintf(stderr, "Unrecognized option: -%c\n", c); return 1;
       }
   }
@@ -1225,11 +1244,16 @@ int main(int argc, char *argv[])
       fprintf(stderr, "Error: command line option -f is required\n");
   }
   __check_option(opt->is_hap, 0, 1, "-H");
+  
+  // random seed
+  srand48((-1 == opt->seed) ? time(0) : opt->seed);
 
   // update flow order
-  opt->flow_order_len = strlen((char*)opt->flow_order);
-  for(i=0;i<opt->flow_order_len;i++) {
-      opt->flow_order[i] = nst_nt4_table[opt->flow_order[i]];
+  if(IONTORRENT == opt->data_type && NULL != opt->flow_order) {
+      opt->flow_order_len = strlen((char*)opt->flow_order);
+      for(i=0;i<opt->flow_order_len;i++) {
+          opt->flow_order[i] = nst_nt4_table[opt->flow_order[i]];
+      }
   }
 
   // Open files
