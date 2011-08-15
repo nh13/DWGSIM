@@ -67,7 +67,7 @@
   </outputs>
  
   <help>
-	  This tools evaluates simulate reads from DWGSIM.  For more information, please see https://sourceforge.net/apps/mediawiki/dnaa/index.php?title=Whole_Genome_Simulation#Evaluating_mapping_-_dwgsim_eval
+	  This tool evaluates simulated reads from DWGSIM.  For more information, please see https://sourceforge.net/apps/mediawiki/dnaa/index.php?title=Whole_Genome_Simulation#Evaluating_mapping_-_dwgsim_eval
   </help>
  
 </tool>
