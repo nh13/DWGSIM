@@ -13,6 +13,7 @@ DWGSIM_EVAL_AOBJS = src/dwgsim_eval.o \
 PROG=		dwgsim dwgsim_eval
 INCLUDES=	-I.
 SUBDIRS=	samtools . 
+CLEAN_SUBDIRS=	samtools src
 LIBPATH=
 
 .SUFFIXES:.c .o
@@ -42,6 +43,31 @@ dwgsim_eval:lib-recur $(DWGSIM_EVAL_AOBJS)
 	$(CC) $(CFLAGS) -o $@ $(DWGSIM_EVAL_AOBJS) -Lsamtools -lm -lz
 
 cleanlocal:
-		rm -fr gmon.out *.o a.out *.exe *.dSYM razip bgzip $(PROG) *~ *.a *.so.* *.so *.dylib
+		rm -vfr gmon.out *.o a.out *.exe *.dSYM razip bgzip $(PROG) *~ *.a *.so.* *.so *.dylib; \
+		wdir=`pwd`; \
+		list='$(CLEAN_SUBDIRS)'; for subdir in $$list; do \
+			if [ -d $$subdir ]; then \
+				cd $$subdir; \
+				pwd; \
+				rm -vfr gmon.out *.o a.out *.exe *.dSYM razip bgzip $(PROG) *~ *.a *.so.* *.so *.dylib; \
+				cd $$wdir; \
+			fi; \
+		done;
 
 clean:cleanlocal-recur
+
+dist:clean
+	if [ -f dwgsim-${PACKAGE_VERSION}.tar.gz ]; then \
+        rm -rv dwgsim-${PACKAGE_VERSION}.tar.gz; \
+	fi; \
+	if [ -f dwgsim-${PACKAGE_VERSION}.tar ]; then \
+        rm -rv dwgsim-${PACKAGE_VERSION}.tar; \
+	fi; \
+	if [ -d dwgsim-${PACKAGE_VERSION} ]; then \
+        rm -rv dwgsim-${PACKAGE_VERSION}; \
+	fi; \
+    mkdir dwgsim-${PACKAGE_VERSION}; \
+	cp -r INSTALL LICENSE Makefile README scripts src dwgsim-${PACKAGE_VERSION}/.; \
+	tar -vcf dwgsim-${PACKAGE_VERSION}.tar dwgsim-${PACKAGE_VERSION}; \
+	gzip -9 dwgsim-${PACKAGE_VERSION}.tar; \
+	rm -rv dwgsim-${PACKAGE_VERSION};
