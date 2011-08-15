@@ -1153,7 +1153,7 @@ static int simu_usage(dwgsim_opt_t *opt)
   fprintf(stderr, "                           1: same strand (mate pair)\n");
   fprintf(stderr, "                           2: opposite strand (paired end)\n");
   fprintf(stderr, "         -f STRING     the flow order for Ion Torrent data [%s]\n", (char*)opt->flow_order);
-  fprintf(stderr, "         -a INT        the minor allele frequency for mutations [%.3lf]\n", opt->af);
+  fprintf(stderr, "         -a FLOAT      the minor allele frequency for mutations [%.3lf]\n", opt->af);
   fprintf(stderr, "         -H            haploid mode [%s]\n", __IS_TRUE(opt->is_hap));
   fprintf(stderr, "         -h            print this message\n");
   fprintf(stderr, "\n");
