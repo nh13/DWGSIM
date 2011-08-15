@@ -19,7 +19,7 @@ print_usage(dwgsim_eval_args_t *args)
   fprintf(stderr, "\n");
   fprintf(stderr, "Program: dwgsim_eval (short read simulation evaluator)\n");
   fprintf(stderr, "Version: %s\n", PACKAGE_VERSION);
-  fprintf(stderr, "Contact: Nils Homer <nilshomer@gmail.com>\n\n");
+  fprintf(stderr, "Contact: Nils Homer <dnaa-help@lists.sourceforge.net>\n\n");
   fprintf(stderr, "Usage: dwgsim_eval [options] <in.sam/in.bam>\n\n");
   fprintf(stderr, "Options:\n");
   fprintf(stderr, "\t-a\tINT\tsplit by [%d]:\n", args->a);
