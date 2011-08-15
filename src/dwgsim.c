@@ -153,7 +153,7 @@ dwgsim_opt_t* dwgsim_opt_init()
   opt->max_n = 0;
   opt->flow_order = NULL;
   opt->flow_order_len = 0;
-  opt->af = 0.5;
+  opt->af = 0.333333;
   opt->fp_mut = opt->fp_bfast = opt->fp_bwa1 = opt->fp_bwa2 = NULL;
   opt->fp_fa = opt->fp_fai = NULL;
 
@@ -467,7 +467,7 @@ generate_errors_flows(dwgsim_opt_t *opt, uint8_t **seq, int32_t *mem, int32_t le
   return len;
 }
 
-void maq_mut_diref(dwgsim_opt_t *opt, const seq_t *seq, int is_hap, mutseq_t *hap1, mutseq_t *hap2)
+void maq_mut_diref(dwgsim_opt_t *opt, const seq_t *seq, mutseq_t *hap1, mutseq_t *hap2)
 {
   int i, deleting = 0;
   mutseq_t *ret[2];
@@ -491,14 +491,14 @@ void maq_mut_diref(dwgsim_opt_t *opt, const seq_t *seq, int is_hap, mutseq_t *ha
           if (drand48() >= opt->indel_frac) { // substitution
               double r = drand48();
               c = (c + (mut_t)(r * 3.0 + 1)) & 3;
-              if (is_hap || drand48() < 0.333333) { // hom
+              if (opt->is_hap || drand48() < opt->af) { // hom
                   ret[0]->s[i] = ret[1]->s[i] = SUBSTITUTE|c;
               } else { // het
                   ret[drand48()<0.5?0:1]->s[i] = SUBSTITUTE|c;
               }
           } else { // indel
               if (drand48() < 0.5) { // deletion
-                  if (is_hap || drand48() < 0.333333) { // hom-del
+                  if (opt->is_hap || drand48() < opt->af) { // hom-del
                       ret[0]->s[i] = ret[1]->s[i] = DELETE|c;
                       deleting = 3;
                   } else { // het-del
@@ -513,7 +513,7 @@ void maq_mut_diref(dwgsim_opt_t *opt, const seq_t *seq, int is_hap, mutseq_t *ha
                   } while (num_ins < ((ins_length_shift - muttype_shift) >> 1) && drand48() < opt->indel_extend);
                   assert(0 < num_ins);
 
-                  if (is_hap || drand48() < 0.333333) { // hom-ins
+                  if (opt->is_hap || drand48() < opt->af) { // hom-ins
                       ret[0]->s[i] = ret[1]->s[i] = (num_ins << ins_length_shift) | (ins << muttype_shift) | INSERT | c;
                   } else { // het-ins
                       ret[drand48()<0.5?0:1]->s[i] = (num_ins << ins_length_shift) | (ins << muttype_shift) | INSERT | c;
@@ -823,7 +823,7 @@ void dwgsim_core(dwgsim_opt_t * opt)
       prev_skip = 0;
 
       // generate mutations and print them out
-      maq_mut_diref(opt, &seq, opt->is_hap, rseq, rseq+1);
+      maq_mut_diref(opt, &seq, rseq, rseq+1);
       maq_print_mutref(name, &seq, rseq, rseq+1, opt->fp_mut);
 
       for (ii = 0; ii != n_pairs; ++ii, ++ctr) { // the core loop
@@ -1118,13 +1118,11 @@ void dwgsim_core(dwgsim_opt_t * opt)
   free(tmp_seq[0]); free(tmp_seq[1]);
 }
 
-static void check_option_int(int32_t val, int32_t min, int32_t max, char *opt)
-{
-  if(val < min || max < val) {
-      fprintf(stderr, "Error: command line option %s was out of range\n", opt);
-      exit(1);
-  }
-}
+#define __check_option(_val, _min, _max, _opt) \
+  if(_val < _min || _max < _val) { \
+      fprintf(stderr, "Error: command line option %s was out of range\n", _opt); \
+      exit(1); \
+  } 
 
 static int simu_usage(dwgsim_opt_t *opt)
 {
@@ -1202,14 +1200,12 @@ int main(int argc, char *argv[])
   }
   if (argc - optind < 1) return simu_usage(opt);
 
-  check_option_int(opt->data_type, 0, 2, "-c");
-  check_option_int(opt->strandedness, 0, 2, "-s");
-
-  opt->flow_order_len = strlen((char*)opt->flow_order);
-  for(i=0;i<opt->flow_order_len;i++) {
-      opt->flow_order[i] = nst_nt4_table[opt->flow_order[i]];
-  }
-
+  __check_option(opt->dist, 0, INT32_MAX, "-d");
+  __check_option(opt->std_dev, 0, INT32_MAX, "-s");
+  __check_option(opt->N, 1, INT32_MAX, "-N");
+  __check_option(opt->length1, 1, INT32_MAX, "-1");
+  __check_option(opt->length2, 1, INT32_MAX, "-2");
+  // error rate
   opt->e1.by = (opt->e1.end - opt->e1.start) / opt->length1;
   opt->e2.by = (opt->e2.end - opt->e2.start) / opt->length2;
   if(IONTORRENT == opt->data_type) {
@@ -1221,6 +1217,24 @@ int main(int argc, char *argv[])
           fprintf(stderr, "End two: a uniform error rate must be given for Ion Torrent data");
           return 1;
       }
+  }
+  __check_option(opt->mut_rate, 0, 1.0, "-r");
+  __check_option(opt->indel_frac, 0, 1.0, "-R");
+  __check_option(opt->indel_extend, 0, 1.0, "-X");
+  __check_option(opt->data_type, 0, 2, "-c");
+  __check_option(opt->strandedness, 0, 2, "-S");
+  __check_option(opt->max_n, 0, INT32_MAX, "-n");
+  __check_option(opt->rand_read, 0, 1.0, "-y");
+  if(IONTORRENT == opt->data_type && NULL == opt->flow_order) {
+      fprintf(stderr, "Error: command line option -f is required\n");
+  }
+  __check_option(opt->is_hap, 0, 1, "-H");
+  __check_option(opt->af, 0, 1.0, "-a");
+
+  // update flow order
+  opt->flow_order_len = strlen((char*)opt->flow_order);
+  for(i=0;i<opt->flow_order_len;i++) {
+      opt->flow_order[i] = nst_nt4_table[opt->flow_order[i]];
   }
 
   // Open files
