@@ -126,7 +126,6 @@ typedef struct {
     int32_t strandedness;
     int8_t *flow_order;
     int32_t flow_order_len;
-    double af;
     int32_t is_hap;
     FILE *fp_mut;
     FILE *fp_bfast;
@@ -153,7 +152,6 @@ dwgsim_opt_t* dwgsim_opt_init()
   opt->max_n = 0;
   opt->flow_order = NULL;
   opt->flow_order_len = 0;
-  opt->af = 0.333333;
   opt->fp_mut = opt->fp_bfast = opt->fp_bwa1 = opt->fp_bwa2 = NULL;
   opt->fp_fa = opt->fp_fai = NULL;
 
@@ -491,14 +489,14 @@ void maq_mut_diref(dwgsim_opt_t *opt, const seq_t *seq, mutseq_t *hap1, mutseq_t
           if (drand48() >= opt->indel_frac) { // substitution
               double r = drand48();
               c = (c + (mut_t)(r * 3.0 + 1)) & 3;
-              if (opt->is_hap || drand48() < opt->af) { // hom
+              if (opt->is_hap || drand48() < 0.333333) { // hom
                   ret[0]->s[i] = ret[1]->s[i] = SUBSTITUTE|c;
               } else { // het
                   ret[drand48()<0.5?0:1]->s[i] = SUBSTITUTE|c;
               }
           } else { // indel
               if (drand48() < 0.5) { // deletion
-                  if (opt->is_hap || drand48() < opt->af) { // hom-del
+                  if (opt->is_hap || drand48() < 0.3333333) { // hom-del
                       ret[0]->s[i] = ret[1]->s[i] = DELETE|c;
                       deleting = 3;
                   } else { // het-del
@@ -513,7 +511,7 @@ void maq_mut_diref(dwgsim_opt_t *opt, const seq_t *seq, mutseq_t *hap1, mutseq_t
                   } while (num_ins < ((ins_length_shift - muttype_shift) >> 1) && drand48() < opt->indel_extend);
                   assert(0 < num_ins);
 
-                  if (opt->is_hap || drand48() < opt->af) { // hom-ins
+                  if (opt->is_hap || drand48() < 0.333333) { // hom-ins
                       ret[0]->s[i] = ret[1]->s[i] = (num_ins << ins_length_shift) | (ins << muttype_shift) | INSERT | c;
                   } else { // het-ins
                       ret[drand48()<0.5?0:1]->s[i] = (num_ins << ins_length_shift) | (ins << muttype_shift) | INSERT | c;
@@ -1153,7 +1151,6 @@ static int simu_usage(dwgsim_opt_t *opt)
   fprintf(stderr, "                           1: same strand (mate pair)\n");
   fprintf(stderr, "                           2: opposite strand (paired end)\n");
   fprintf(stderr, "         -f STRING     the flow order for Ion Torrent data [%s]\n", (char*)opt->flow_order);
-  fprintf(stderr, "         -a FLOAT      the minor allele frequency for mutations [%.3lf]\n", opt->af);
   fprintf(stderr, "         -H            haploid mode [%s]\n", __IS_TRUE(opt->is_hap));
   fprintf(stderr, "         -h            print this message\n");
   fprintf(stderr, "\n");
@@ -1172,7 +1169,7 @@ int main(int argc, char *argv[])
   char fn_fai[1024]="\0";
   char fn_tmp[1024]="\0";
 
-  while ((c = getopt(argc, argv, "d:s:N:1:2:e:E:r:R:X:c:S:n:y:Hf:ha:")) >= 0) {
+  while ((c = getopt(argc, argv, "d:s:N:1:2:e:E:r:R:X:c:S:n:y:Hf:h")) >= 0) {
       switch (c) {
         case 'd': opt->dist = atoi(optarg); break;
         case 's': opt->std_dev = atof(optarg); break;
@@ -1193,7 +1190,6 @@ int main(int argc, char *argv[])
                   opt->flow_order = (int8_t*)strdup(optarg);
                   break;
         case 'H': opt->is_hap = 1; break;
-        case 'a': opt->af = atof(optarg); break;
         case 'h': return simu_usage(opt);
         default: fprintf(stderr, "Unrecognized option: -%c\n", c); return 1;
       }
@@ -1229,7 +1225,6 @@ int main(int argc, char *argv[])
       fprintf(stderr, "Error: command line option -f is required\n");
   }
   __check_option(opt->is_hap, 0, 1, "-H");
-  __check_option(opt->af, 0, 1.0, "-a");
 
   // update flow order
   opt->flow_order_len = strlen((char*)opt->flow_order);
