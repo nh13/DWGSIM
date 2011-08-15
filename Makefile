@@ -2,7 +2,6 @@ PACKAGE_VERSION="0.1.3"
 CC=			gcc
 CFLAGS=		-g -Wall -O2 #-m64 #-arch ppc
 DFLAGS=		-D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE -DPACKAGE_VERSION=\\\"${PACKAGE_VERSION}\\\"
-PACKAGE_VERSION=0.0.3
 DWGSIM_AOBJS = src/dwgsim.o
 DWGSIM_EVAL_AOBJS = src/dwgsim_eval.o \
 					samtools/knetfile.o \
