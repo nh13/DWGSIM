@@ -1086,9 +1086,10 @@ static int simu_usage()
   fprintf(stderr, "\n");
   fprintf(stderr, "Program: dwgsim (short read simulator)\n");
   fprintf(stderr, "Version: %s\n", PACKAGE_VERSION);
-  fprintf(stderr, "Contact: Nils Homer <nhomer@cs.ucla.edu>\n\n");
+  fprintf(stderr, "Contact: Nils Homer <nilshomer@gmail.com>\n\n");
   fprintf(stderr, "Usage:   dwgsim [options] <in.ref.fa> <out.prefix>\n\n");
-  fprintf(stderr, "Options: -e FLOAT      base/color error rate of the first read [%.3f]\n", ERR_RATE);
+  fprintf(stderr, "Options:\n");
+  fprintf(stderr, "         -e FLOAT      base/color error rate of the first read [%.3f]\n", ERR_RATE);
   fprintf(stderr, "         -E FLOAT      base/color error rate of the second read [%.3f]\n", ERR_RATE);
   fprintf(stderr, "         -d INT        inner distance between the two ends [500]\n");
   fprintf(stderr, "         -s INT        standard deviation [50]\n");

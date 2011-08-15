@@ -16,7 +16,12 @@
 int 
 print_usage(dwgsim_eval_args_t *args)
 {
-  fprintf(stderr, "Usage: dwgsim_eval [options] <in.sam/in.bam>\n");
+  fprintf(stderr, "\n");
+  fprintf(stderr, "Program: dwgsim_eval (short read simulation evaluator)\n");
+  fprintf(stderr, "Version: %s\n", PACKAGE_VERSION);
+  fprintf(stderr, "Contact: Nils Homer <nilshomer@gmail.com>\n\n");
+  fprintf(stderr, "Usage: dwgsim_eval [options] <in.sam/in.bam>\n\n");
+  fprintf(stderr, "Options:\n");
   fprintf(stderr, "\t-a\tINT\tsplit by [%d]:\n", args->a);
   fprintf(stderr, "\t\t\t\t\t0: by mapping quality\n");
   fprintf(stderr, "\t\t\t\t\t1: by alignment score\n");
