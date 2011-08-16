@@ -1219,7 +1219,7 @@ int main(int argc, char *argv[])
   __check_option(opt->std_dev, 0, INT32_MAX, "-s");
   __check_option(opt->N, 1, INT32_MAX, "-N");
   __check_option(opt->length1, 1, INT32_MAX, "-1");
-  __check_option(opt->length2, 1, INT32_MAX, "-2");
+  __check_option(opt->length2, 0, INT32_MAX, "-2");
   // error rate
   opt->e1.by = (opt->e1.end - opt->e1.start) / opt->length1;
   opt->e2.by = (opt->e2.end - opt->e2.start) / opt->length2;
