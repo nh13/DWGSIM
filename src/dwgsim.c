@@ -1139,7 +1139,7 @@ static int simu_usage(dwgsim_opt_t *opt)
   fprintf(stderr, "         -1 INT        length of the first read [%d]\n", opt->length1);
   fprintf(stderr, "         -2 INT        length of the second read [%d]\n", opt->length2);
   fprintf(stderr, "         -r FLOAT      rate of mutations [%.4f]\n", opt->mut_rate);
-  fprintf(stderr, "         -R FLOAT      fraction of indels [%.2f]\n", opt->indel_frac);
+  fprintf(stderr, "         -R FLOAT      fraction of mutations that are indels [%.2f]\n", opt->indel_frac);
   fprintf(stderr, "         -X FLOAT      probability an indel is extended [%.2f]\n", opt->indel_extend);
   fprintf(stderr, "         -y FLOAT      probability of a random DNA read [%.2f]\n", opt->rand_read);
   fprintf(stderr, "         -n INT        maximum number of Ns allowed in a given read [%d]\n", opt->max_n);

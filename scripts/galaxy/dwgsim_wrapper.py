@@ -12,7 +12,7 @@ usage: dwgsim_wrapper.py [options]
     -1,--lengthOne=1: length of the first read [70]
     -2,--lengthTwo=2: length of the second read [70]
     -r,--mutRate=r: rate of mutations [0.0010]
-    -R,--fracIndels=R: fraction of indels [0.10]
+    -R,--fracIndels=R: fraction of mutations that are indels [0.10]
     -X,--indelExt=X: probability an indel is extended [0.30]
     -y,--randProb=y: probability of a random DNA read [0.10]
     -n,--maxN=n: maximum number of Ns allowed in a given read [0]
@@ -72,7 +72,7 @@ def __main__():
     parser.add_option( '-1', '--lengthOne', dest='lengthOne', type='int', help='length of the first read' )
     parser.add_option( '-2', '--lengthTwo', dest='lengthTwo', type='int', help='length of the second read' )
     parser.add_option( '-r', '--mutRate', dest='mutRate', type='float', help='rate of mutations' )
-    parser.add_option( '-R', '--fracIndels', dest='fracIndels', type='float', help='fraction of indels' )
+    parser.add_option( '-R', '--fracIndels', dest='fracIndels', type='float', help='fraction of mutations that are indels' )
     parser.add_option( '-X', '--indelExt', dest='indelExt', type='float', help='probability an indel is extended' )
     parser.add_option( '-y', '--randProb', dest='randProb', type='float', help='probability of a random DNA read' )
     parser.add_option( '-n', '--maxN', dest='maxN', type='int', help='maximum number of Ns allowed in a given read' )

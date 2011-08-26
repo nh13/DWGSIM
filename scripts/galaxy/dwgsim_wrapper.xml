@@ -49,7 +49,7 @@
 		<label>rate of mutations</label>
 	</param>
 	<param name="rateOfIndels" size="4" type="text" value="0.10">
-		<label>fraction of indels </label>
+		<label>fraction of mutations that are indels</label>
 	</param>
 	<param name="probExtRead" size="4" type="text" value="0.30">
 		<label>probability an indel is extended</label>
