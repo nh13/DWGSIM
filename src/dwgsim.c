@@ -284,6 +284,24 @@ void contigs_destroy(contigs_t *c)
   }
   free(c->contigs);
   free(c);
+} 
+
+int32_t get_muttype(char *str)
+{
+  int32_t i;
+  for(i=0;i<strlen(str);i++) {
+      str[i] = tolower(str[i]);
+  }
+  if(0 == strcmp("snp", str) || 0 == strcmp("substitute", str) || 0 == strcmp("sub", str) || 0 == strcmp("s", str)) {
+      return SUBSTITUTE;
+  }
+  else if(0 == strcmp("insertion", str) || 0 == strcmp("insert", str) || 0 == strcmp("ins", str) || 0 == strcmp("i", str)) {
+      return INSERT;
+  }
+  else if(0 == strcmp("deletion", str) || 0 == strcmp("delet", str) || 0 == strcmp("del", str) || 0 == strcmp("d", str)) {
+      return DELETE;
+  }
+  return -1;
 }
 
 typedef struct {
@@ -358,22 +376,22 @@ muts_bed_t *muts_bed_init(FILE *fp, contigs_t *c)
       m->muts[m->n].contig = i;
       m->muts[m->n].start = start;
       m->muts[m->n].end = end; // one-based
-      if(0 == strcmp("SNP", type)) {
-          m->muts[m->n].type = SUBSTITUTE;
-      }
-      else if(0 == strcmp("Insertion", type)) {
-          m->muts[m->n].type = INSERT;
+
+      m->muts[m->n].type = get_muttype(type);
+      switch(m->muts[m->n].type) {
+        case SUBSTITUTE:
+          break;
+        case INSERT:
           if(((ins_length_shift - muttype_shift) >> 1) < end - start) {
               fprintf(stderr, "Error: insertion of length %d exceeded the maximum supported length of %d\n",
                       end - start,
                       (int32_t)((ins_length_shift - muttype_shift) >> 1));
               exit(1);
           }
-      }
-      else if(0 == strcmp("Deletion", type)) {
-          m->muts[m->n].type = DELETE;
-      }
-      else {
+          break;
+        case DELETE:
+          break;
+        default:
           // error
           fprintf(stderr, "Error: mutation type unrecognized [%s]\n", type);
           exit(1);
