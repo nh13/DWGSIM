@@ -130,6 +130,7 @@ typedef struct {
     int32_t flow_order_len;
     int32_t is_hap;
     int32_t seed;
+    char *fn_muts_txt;
     char *fn_muts_bed;
     FILE *fp_mut;
     FILE *fp_bfast;
@@ -157,6 +158,7 @@ dwgsim_opt_t* dwgsim_opt_init()
   opt->flow_order = NULL;
   opt->flow_order_len = 0;
   opt->seed = -1;
+  opt->fn_muts_txt = NULL;
   opt->fn_muts_bed = NULL;
   opt->fp_mut = opt->fp_bfast = opt->fp_bwa1 = opt->fp_bwa2 = NULL;
   opt->fp_fa = opt->fp_fai = NULL;
@@ -166,6 +168,7 @@ dwgsim_opt_t* dwgsim_opt_init()
 
 void dwgsim_opt_destroy(dwgsim_opt_t *opt)
 {
+  free(opt->fn_muts_txt);
   free(opt->fn_muts_bed);
   free(opt->flow_order);
   free(opt);
@@ -302,6 +305,118 @@ int32_t get_muttype(char *str)
       return DELETE;
   }
   return -1;
+}
+
+typedef struct {
+    uint32_t contig;
+    uint32_t pos;
+    uint8_t type;
+    uint8_t is_hap;
+    char *bases;
+} mut_txt_t;
+
+typedef struct {
+    mut_txt_t *muts;
+    int32_t n;
+    int32_t mem;
+} muts_txt_t;
+
+static char iupac_and_base_to_mut(char iupac, char base)
+{
+  static char *codes = "XACMGRSVTWYHKDBN";
+  int32_t i;
+  int32_t b = nst_nt4_table[(int)base];
+  for(i=0;i<4;i++) { 
+      if(codes[1<<(b&0x3) | 1<<(i&0x3)] == iupac) {
+          return "ACGTN"[i];
+      }
+  }
+  return 'X';
+}
+
+muts_txt_t *muts_txt_init(FILE *fp, contigs_t *c)
+{
+  muts_txt_t *m = NULL;
+  int32_t i;
+  char name[1024];
+  uint32_t pos, prev_pos = 0, is_hap;
+  char ref, mut[1024];
+
+  m = calloc(1, sizeof(muts_txt_t));
+  m->n = 0;
+  m->mem = 1024;
+  m->muts = malloc(m->mem * sizeof(mut_txt_t));
+
+  i = 0;
+  while(0 < fscanf(fp, "%s\t%u\t%c\t%s\t%d", name, &pos, &ref, mut, &is_hap)) {
+      // find the contig
+      while(i < c->n && 0 != strcmp(name, c->contigs[i].name)) {
+          i++;
+          prev_pos = 0;
+      }
+      if(c->n == i) {
+          fprintf(stderr, "Error: contig not found [%s]\n", name);
+          exit(1);
+      }
+      else if(pos <= 0 || c->contigs[i].len < pos) {
+          fprintf(stderr, "Error: start out of range [%s,%u]\n", name, pos);
+          exit(1);
+      }
+      else if(pos < prev_pos) {
+          fprintf(stderr, "Error: out of order [%s,%u]\n", name, pos);
+          exit(1);
+      }
+
+      if(m->n == m->mem) {
+          m->mem <<= 1;
+          m->muts = realloc(m->muts, m->mem * sizeof(mut_txt_t)); 
+      }
+      m->muts[m->n].contig = i;
+      m->muts[m->n].pos = pos;
+      m->muts[m->n].bases = strdup(mut);
+
+      if('-' == ref && '-' != mut[0]) {
+          m->muts[m->n].type = INSERT;
+      }
+      else if('-' != ref && '-' == mut[0]) {
+          m->muts[m->n].type = DELETE;
+      }
+      else if('-' != ref && '-' != mut[0]) {
+          m->muts[m->n].type = SUBSTITUTE;
+          if(is_hap < 3) {
+              m->muts[m->n].bases[0] = iupac_and_base_to_mut(m->muts[m->n].bases[0], ref);
+              if('X' == m->muts[m->n].bases[0]) {
+                  fprintf(stderr, "Error: out of range\n");
+                  exit(1);
+              }
+              m->muts[m->n].bases[1] = '\0';
+          }
+      }
+      else {
+          fprintf(stderr, "Error: out of range\n");
+          exit(1);
+      }
+      
+      m->muts[m->n].is_hap = is_hap;
+
+      m->n++;
+  }
+  if(m->n < m->mem) {
+      m->mem = m->n;
+      m->muts = realloc(m->muts, m->mem * sizeof(mut_txt_t)); 
+  }
+
+  return m;
+}
+
+void muts_txt_destroy(muts_txt_t *m)
+{
+  int32_t i;
+  for(i=0;i<m->n;i++) {
+      free(m->muts[i].bases);
+  }
+  free(m->muts);
+  free(m);
 }
 
 typedef struct {
@@ -645,9 +760,9 @@ generate_errors_flows(dwgsim_opt_t *opt, uint8_t **seq, int32_t *mem, int32_t le
   return len;
 }
 
-void maq_mut_diref(dwgsim_opt_t *opt, const seq_t *seq, mutseq_t *hap1, mutseq_t *hap2, int32_t contig_i, muts_bed_t *muts_bed)
+void maq_mut_diref(dwgsim_opt_t *opt, const seq_t *seq, mutseq_t *hap1, mutseq_t *hap2, int32_t contig_i, muts_txt_t *muts_txt, muts_bed_t *muts_bed)
 {
-  int i, deleting = 0;
+  int32_t i, j, deleting = 0;
   mutseq_t *ret[2];
 
   ret[0] = hap1; ret[1] = hap2;
@@ -656,7 +771,7 @@ void maq_mut_diref(dwgsim_opt_t *opt, const seq_t *seq, mutseq_t *hap1, mutseq_t
   ret[0]->s = (mut_t *)calloc(seq->m, sizeof(mut_t));
   ret[1]->s = (mut_t *)calloc(seq->m, sizeof(mut_t));
 
-  if(NULL == muts_bed) {
+  if(NULL == muts_bed && NULL == muts_txt) {
       for (i = 0; i != seq->l; ++i) {
           mut_t c;
           c = ret[0]->s[i] = ret[1]->s[i] = (mut_t)nst_nt4_table[(int)seq->s[i]];
@@ -703,7 +818,42 @@ void maq_mut_diref(dwgsim_opt_t *opt, const seq_t *seq, mutseq_t *hap1, mutseq_t
           }
       }
   }
-  else {
+  else if(NULL != muts_txt) {
+      // seed
+      for (i = 0; i != seq->l; ++i) {
+          ret[0]->s[i] = ret[1]->s[i] = (mut_t)nst_nt4_table[(int)seq->s[i]];
+      }
+      for (i =0; i < muts_txt->n; ++i) {
+          if (muts_txt->muts[i].contig == contig_i) {
+              int8_t type = muts_txt->muts[i].type;
+              uint32_t pos = muts_txt->muts[i].pos;
+              int8_t is_hap = muts_txt->muts[i].is_hap;
+              mut_t c = (mut_t)nst_nt4_table[(int)seq->s[pos-1]];
+
+              if (DELETE == type) {
+                  if (is_hap & 1) ret[0]->s[pos-1] |= DELETE|c;
+                  if (is_hap & 2) ret[1]->s[pos-1] |= DELETE|c;
+              }
+              else if (SUBSTITUTE == type) {
+                  if (is_hap & 1) ret[0]->s[pos-1] = SUBSTITUTE|nst_nt4_table[(int)muts_txt->muts[i].bases[0]];
+                  if (is_hap & 2) ret[1]->s[pos-1] = SUBSTITUTE|nst_nt4_table[(int)muts_txt->muts[i].bases[0]];
+              }
+              else if (INSERT == type) {
+                  mut_t num_ins = 0, ins = 0;
+                  for (j = strlen(muts_txt->muts[i].bases)-1; 0 <= j; --j) {
+                      if(((ins_length_shift - muttype_shift) >> 1) <= num_ins) break;
+                      num_ins++;
+                      ins = (ins << 2) | nst_nt4_table[(int)muts_txt->muts[i].bases[j]];
+                  } 
+                  assert(0 < num_ins);
+
+                  if (is_hap & 1) ret[0]->s[pos-1] = (num_ins << ins_length_shift) | (ins << muttype_shift) | INSERT | c;
+                  if (is_hap & 2) ret[1]->s[pos-1] = (num_ins << ins_length_shift) | (ins << muttype_shift) | INSERT | c;
+              }
+          }
+      }
+  }
+  else { // BED
       // seed
       for (i = 0; i != seq->l; ++i) {
           ret[0]->s[i] = ret[1]->s[i] = (mut_t)nst_nt4_table[(int)seq->s[i]];
@@ -711,7 +861,6 @@ void maq_mut_diref(dwgsim_opt_t *opt, const seq_t *seq, mutseq_t *hap1, mutseq_t
       // mutates exactly based on a BED file
       for (i = 0; i < muts_bed->n; ++i) {
           if (muts_bed->muts[i].contig == contig_i) {
-              int32_t j;
               int32_t has_bases = 1, is_hom = 0;
               int32_t which_hap = 0;
               mut_t c;
@@ -769,7 +918,7 @@ void maq_mut_diref(dwgsim_opt_t *opt, const seq_t *seq, mutseq_t *hap1, mutseq_t
                       else {
                           ins = (ins << 2) | (mut_t)(nst_nt4_table[(int)muts_bed->muts[i].bases[j - muts_bed->muts[i].start]]);
                       }
-                  } while (num_ins < ((ins_length_shift - muttype_shift) >> 1) && drand48() < opt->indel_extend);
+                  } while (num_ins < ((ins_length_shift - muttype_shift) >> 1) && (1 == has_bases || drand48() < opt->indel_extend));
                   assert(0 < num_ins);
 
                   j = muts_bed->muts[i].start;
@@ -820,7 +969,7 @@ void maq_mut_diref(dwgsim_opt_t *opt, const seq_t *seq, mutseq_t *hap1, mutseq_t
       }
   }
   // left-justify all the insertions and deletions
-  int j, del_length;
+  int del_length;
   int prev_del[2] = {0, 0};
   for (i = 0; i != seq->l; ++i) {
       mut_t c[3];
@@ -968,7 +1117,7 @@ void maq_mut_diref(dwgsim_opt_t *opt, const seq_t *seq, mutseq_t *hap1, mutseq_t
 // 5 - '-' for homozygous, '+' for heterozygous
 void maq_print_mutref(const char *name, const seq_t *seq, mutseq_t *hap1, mutseq_t *hap2, FILE *fpout)
 {
-  int32_t i;
+  int32_t i, hap;
   for (i = 0; i != seq->l; ++i) {
       mut_t c[3];
       c[0] = nst_nt4_table[(int)seq->s[i]];
@@ -978,9 +1127,9 @@ void maq_print_mutref(const char *name, const seq_t *seq, mutseq_t *hap1, mutseq
           fprintf(fpout, "%s\t%d\t", name, i+1);
           if (c[1] == c[2]) { // hom
               if ((c[1]&mutmsk) == SUBSTITUTE) { // substitution
-                  fprintf(fpout, "%c\t%c\t-\n", "ACGTN"[c[0]], "ACGTN"[c[1]&0xf]);
+                  fprintf(fpout, "%c\t%c\t3\n", "ACGTN"[c[0]], "ACGTN"[c[1]&0xf]);
               } else if ((c[1]&mutmsk) == DELETE) { // del
-                  fprintf(fpout, "%c\t-\t-\n", "ACGTN"[c[0]]);
+                  fprintf(fpout, "%c\t-\t3\n", "ACGTN"[c[0]]);
               } else if ((c[1] & mutmsk) == INSERT) { // ins
                   fprintf(fpout, "-\t");
                   mut_t n = (c[1] >> ins_length_shift) & ins_length_mask, ins = c[1] >> muttype_shift;
@@ -990,15 +1139,16 @@ void maq_print_mutref(const char *name, const seq_t *seq, mutseq_t *hap1, mutseq
                       ins >>= 2;
                       n--;
                   }
-                  fprintf(fpout, "\t-\n");
+                  fprintf(fpout, "\t3\n");
               }  else assert(0);
           } else { // het
               if ((c[1]&mutmsk) == SUBSTITUTE || (c[2]&mutmsk) == SUBSTITUTE) { // substitution
-                  fprintf(fpout, "%c\t%c\t+\n", "ACGTN"[c[0]], "XACMGRSVTWYHKDBN"[1<<(c[1]&0x3)|1<<(c[2]&0x3)]);
+                  hap = ((c[1]&mutmsk) == SUBSTITUTE) ? 1 : 2;
+                  fprintf(fpout, "%c\t%c\t%d\n", "ACGTN"[c[0]], "XACMGRSVTWYHKDBN"[1<<(c[1]&0x3)|1<<(c[2]&0x3)], hap);
               } else if ((c[1]&mutmsk) == DELETE) {
-                  fprintf(fpout, "%c\t-\t+\n", "ACGTN"[c[0]]);
+                  fprintf(fpout, "%c\t-\t1\n", "ACGTN"[c[0]]);
               } else if ((c[2]&mutmsk) == DELETE) {
-                  fprintf(fpout, "%c\t-\t+\n", "ACGTN"[c[0]]);
+                  fprintf(fpout, "%c\t-\t2\n", "ACGTN"[c[0]]);
               } else if ((c[1]&mutmsk) == INSERT) { // ins 1
                   fprintf(fpout, "-\t");
                   mut_t n = (c[1] >> ins_length_shift) & ins_length_mask, ins = c[1] >> muttype_shift;
@@ -1008,7 +1158,7 @@ void maq_print_mutref(const char *name, const seq_t *seq, mutseq_t *hap1, mutseq
                       ins >>= 2;
                       n--;
                   }
-                  fprintf(fpout, "\t+\n");
+                  fprintf(fpout, "\t1\n");
               } else if ((c[2]&mutmsk) == INSERT) { // ins 2
                   fprintf(fpout, "-\t");
                   mut_t n = (c[2] >> ins_length_shift) & ins_length_mask, ins = c[2] >> muttype_shift;
@@ -1018,7 +1168,7 @@ void maq_print_mutref(const char *name, const seq_t *seq, mutseq_t *hap1, mutseq
                       ins >>= 2;
                       n--;
                   }
-                  fprintf(fpout, "\t+\n");
+                  fprintf(fpout, "\t2\n");
               } else assert(0);
           }
       }
@@ -1039,7 +1189,9 @@ void dwgsim_core(dwgsim_opt_t * opt)
   uint64_t n_sim = 0;
   mut_t *target;
   error_t *e[2]={NULL,NULL};
+  FILE *fp_muts_txt = NULL;
   FILE *fp_muts_bed = NULL;
+  muts_txt_t *muts_txt = NULL;
   muts_bed_t *muts_bed = NULL;
   contigs_t *contigs = NULL;
 
@@ -1055,6 +1207,10 @@ void dwgsim_core(dwgsim_opt_t * opt)
   tmp_seq_mem[0] = tmp_seq_mem[1] = l+2;
   size[0] = opt->length1; size[1] = opt->length2;
   
+  if(NULL != opt->fn_muts_txt) {
+      fp_muts_txt = xopen(opt->fn_muts_txt, "r");
+      contigs = contigs_init();
+  }
   if(NULL != opt->fn_muts_bed) {
       fp_muts_bed = xopen(opt->fn_muts_bed, "r");
       contigs = contigs_init();
@@ -1085,7 +1241,12 @@ void dwgsim_core(dwgsim_opt_t * opt)
   fprintf(stderr, "[dwgsim_core] %d sequences, total length: %llu\n", n_ref, (long long)tot_len);
   rewind(opt->fp_fa);
 
-  if(NULL != opt->fn_muts_bed) {
+  if(NULL != opt->fn_muts_txt) {
+      muts_txt = muts_txt_init(fp_muts_txt, contigs); // read in the BED
+      contigs_destroy(contigs);
+      contigs = NULL;
+  }
+  else if(NULL != opt->fn_muts_bed) {
       muts_bed = muts_bed_init(fp_muts_bed, contigs); // read in the BED
       contigs_destroy(contigs);
       contigs = NULL;
@@ -1111,7 +1272,7 @@ void dwgsim_core(dwgsim_opt_t * opt)
       prev_skip = 0;
 
       // generate mutations and print them out
-      maq_mut_diref(opt, &seq, rseq, rseq+1, contig_i, muts_bed);
+      maq_mut_diref(opt, &seq, rseq, rseq+1, contig_i, muts_txt, muts_bed);
       maq_print_mutref(name, &seq, rseq, rseq+1, opt->fp_mut);
 
       for (ii = 0; ii != n_pairs; ++ii, ++ctr) { // the core loop
@@ -1405,6 +1566,10 @@ void dwgsim_core(dwgsim_opt_t * opt)
   fprintf(stderr, "\r[dwgsim_core] Complete!\n");
   free(seq.s); free(qstr);
   free(tmp_seq[0]); free(tmp_seq[1]);
+  if(NULL != opt->fn_muts_txt) {
+      muts_txt_destroy(muts_txt);
+      fclose(fp_muts_txt);
+  }
   if(NULL != opt->fn_muts_bed) {
       muts_bed_destroy(muts_bed);
       fclose(fp_muts_bed);
@@ -1448,6 +1613,7 @@ static int simu_usage(dwgsim_opt_t *opt)
   fprintf(stderr, "         -f STRING     the flow order for Ion Torrent data [%s]\n", (char*)opt->flow_order);
   fprintf(stderr, "         -H            haploid mode [%s]\n", __IS_TRUE(opt->is_hap));
   fprintf(stderr, "         -z INT        random seed (-1 uses the current time) [%d]\n", opt->seed);
+  fprintf(stderr, "         -m FILE       the mutations txt file to re-create [%s]\n", (NULL == opt->fn_muts_txt) ? "not using" : opt->fn_muts_txt);
   fprintf(stderr, "         -b FILE       the bed-like set of candidate mutations [%s]\n", (NULL == opt->fn_muts_bed) ? "not using" : opt->fn_muts_bed);
   fprintf(stderr, "         -h            print this message\n");
   fprintf(stderr, "\n");
@@ -1466,7 +1632,7 @@ int main(int argc, char *argv[])
   char fn_fai[1024]="\0";
   char fn_tmp[1024]="\0";
 
-  while ((c = getopt(argc, argv, "d:s:N:1:2:e:E:r:R:X:c:S:n:y:Hf:z:b:h")) >= 0) {
+  while ((c = getopt(argc, argv, "d:s:N:1:2:e:E:r:R:X:c:S:n:y:Hf:z:m:b:h")) >= 0) {
       switch (c) {
         case 'd': opt->dist = atoi(optarg); break;
         case 's': opt->std_dev = atof(optarg); break;
@@ -1489,6 +1655,7 @@ int main(int argc, char *argv[])
         case 'H': opt->is_hap = 1; break;
         case 'h': return simu_usage(opt);
         case 'z': opt->seed = atoi(optarg); break;
+        case 'm': free(opt->fn_muts_txt); opt->fn_muts_txt = strdup(optarg); break;
         case 'b': free(opt->fn_muts_bed); opt->fn_muts_bed = strdup(optarg); break;
         default: fprintf(stderr, "Unrecognized option: -%c\n", c); return 1;
       }
@@ -1525,6 +1692,11 @@ int main(int argc, char *argv[])
       return 1;
   }
   __check_option(opt->is_hap, 0, 1, "-H");
+  
+  if(NULL != opt->fn_muts_txt && NULL != opt->fn_muts_bed) {
+      fprintf(stderr, "Error: -m and -b cannot be used together\n");
+      return 1;
+  }
   
   // random seed
   srand48((-1 == opt->seed) ? time(0) : opt->seed);
