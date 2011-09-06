@@ -1493,7 +1493,7 @@ int main(int argc, char *argv[])
         default: fprintf(stderr, "Unrecognized option: -%c\n", c); return 1;
       }
   }
-  if (argc - optind < 1) return simu_usage(opt);
+  if (argc - optind < 2) return simu_usage(opt);
 
   __check_option(opt->dist, 0, INT32_MAX, "-d");
   __check_option(opt->std_dev, 0, INT32_MAX, "-s");
