@@ -5,7 +5,7 @@ Runs DWGSIM_EVAL
 
 usage: dwgsim_eval_wrapper.py [options]
     -a,--alignmentScore=a: split alignments by alignment score instead of mapping quality
-    -b,--bwa=b: alignments are from BWA
+    -b,--bwa=b: alignments are from BWA (SOLiD only)
     -c,--colorSpace=c: color space alignments
     -d,--scoreFactor=d: divide quality/alignment score by this factor
     -g,--wiggle=g: gap "wiggle"
@@ -61,7 +61,7 @@ def __main__():
     parser = optparse.OptionParser()
 
     parser.add_option( '-a', '--alignmentScore', action='store_true', dest='alignmentScore', default=False, help='split alignments by alignment score instead of mapping quality' )
-    parser.add_option( '-b', '--bwa', action='store_true', dest='bwa', default=False, help='alignments are from BWA' )
+    parser.add_option( '-b', '--bwa', action='store_true', dest='bwa', default=False, help='alignments are from BWA (SOLiD only)' )
     parser.add_option( '-c', '--colorSpace', action='store_true', dest='colorSpace', default=False, help='generate reads in color space (SOLiD reads)' )
     parser.add_option( '-d', '--scoreFactor', dest='scoreFactor', type='int', help='divide quality/alignment score by this factor' )
     parser.add_option( '-g', '--wiggle', dest='wiggle', type='int', help='gap "wiggle"' )

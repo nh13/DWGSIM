@@ -38,7 +38,7 @@
   <inputs>
 	<param format="sam,bam" name="input" type="data" label="SAM/BAM file to evaluate"/>
 	<param name="alignmentScore" type="boolean" truevalue="-a" falsevalue="" checked="False" label="split alignments by alignment score instead of mapping quality"/>
-	<param name="bwa" type="boolean" truevalue="-b" falsevalue="" checked="False" label="alignments are from BWA"/>
+	<param name="bwa" type="boolean" truevalue="-b" falsevalue="" checked="False" label="alignments are from BWA (SOLiD only)"/>
 	<param name="colorSpace" type="boolean" truevalue="-c" falsevalue="" checked="False" label="color space alignments"/>
 	<param name="scoreFactor" size="4" type="text" value="1">
 		<label>divide quality/alignment score by this factor</label>
