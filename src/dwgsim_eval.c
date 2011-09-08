@@ -31,7 +31,7 @@ print_usage(dwgsim_eval_args_t *args)
   fprintf(stderr, "\t-c\t\tcolor space alignments [%s]\n", __IS_TRUE(args->c));
   fprintf(stderr, "\t-d\tINT\tdivide quality/alignment score by this factor [%d]\n", args->d);
   fprintf(stderr, "\t-g\t\tgap \"wiggle\" [%d]\n", args->g);
-  fprintf(stderr, "\t-m\t\tconsecutive alignments with the same name (and end for multi-ends) should be treated as multi-mapped reads [%d]\n", args->m);
+  fprintf(stderr, "\t-m\t\tconsecutive alignments with the same name (and end for multi-ends) should be treated as multi-mapped reads [%s]\n", __IS_TRUE(args->m));
   fprintf(stderr, "\t-n\tINT\tnumber of raw input paired-end reads (otherwise, inferred from all SAM records present) [%d]\n", args->n);
   fprintf(stderr, "\t-q\tINT\tconsider only alignments with this mapping quality or greater [%d]\n", args->q);
   fprintf(stderr, "\t-z\t\tinput contains only single end reads [%s]\n", __IS_TRUE(args->z));
