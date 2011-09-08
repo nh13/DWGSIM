@@ -31,6 +31,7 @@ print_usage(dwgsim_eval_args_t *args)
   fprintf(stderr, "\t-c\t\tcolor space alignments [%s]\n", __IS_TRUE(args->c));
   fprintf(stderr, "\t-d\tINT\tdivide quality/alignment score by this factor [%d]\n", args->d);
   fprintf(stderr, "\t-g\t\tgap \"wiggle\" [%d]\n", args->g);
+  fprintf(stderr, "\t-m\t\tconsecutive alignments with the same name (and end for multi-ends) should be treated as multi-mapped reads [%d]\n", args->m);
   fprintf(stderr, "\t-n\tINT\tnumber of raw input paired-end reads (otherwise, inferred from all SAM records present) [%d]\n", args->n);
   fprintf(stderr, "\t-q\tINT\tconsider only alignments with this mapping quality or greater [%d]\n", args->q);
   fprintf(stderr, "\t-z\t\tinput contains only single end reads [%s]\n", __IS_TRUE(args->z));
@@ -109,20 +110,21 @@ main(int argc, char *argv[])
   char c;
   dwgsim_eval_args_t args;
 
-  args.a = args.b = args.c = args.i = args.n = args.p = args.q = args.z = 0; 
+  args.a = args.b = args.c = args.i = args.m = args.n = args.p = args.q = args.z = 0; 
   args.d = 1;
   args.e = -1;
   args.g = 5;
   args.s = -1;
   args.S = 0;
 
-  while(0 <= (c = getopt(argc, argv, "d:e:g:n:q:s:abchipzS"))) {
+  while(0 <= (c = getopt(argc, argv, "d:e:g:m:n:q:s:abchimpzS"))) {
       switch(c) {
         case 'a': args.a = 1; break;
         case 'b': args.b = 1; break;
         case 'c': args.c = 1; break;
         case 'd': args.d = atoi(optarg); break;
         case 'g': args.g = atoi(optarg); break;
+        case 'm': args.m = 1; break;
         case 'h': return print_usage(&args); break;
         case 'n': args.n = atoi(optarg); break;
         case 'q': args.q = atoi(optarg); break;
@@ -157,6 +159,7 @@ run(dwgsim_eval_args_t *args,
   bam1_t *b=NULL;
   dwgsim_eval_counts_t *counts;
   char *prev_qname=NULL;
+  int32_t prev_end=-1;
 
   // initialize counts
   counts = dwgsim_eval_counts_init();
@@ -178,8 +181,16 @@ run(dwgsim_eval_args_t *args,
 
       b = bam_init1();
       while(0 < samread(fp_in, b)) {
-          if(NULL == prev_qname ||
-             0 != strcmp(prev_qname, bam1_qname(b))) {
+          if(1 == args->m &&
+             NULL != prev_qname && 
+             prev_end == (BAM_FREAD1 & b->core.flag) &&
+             0 == strcmp(prev_qname, bam1_qname(b))) {
+              // do nothing
+          }
+          else {
+              free(prev_qname);
+              prev_qname = strdup(bam1_qname(b));
+              prev_end = (BAM_FREAD1 & b->core.flag);
 
               process_bam(counts, args, fp_in->header, b, fp_out);
 
@@ -198,8 +209,6 @@ run(dwgsim_eval_args_t *args,
                   n++;
               }
 
-              free(prev_qname);
-              prev_qname = strdup(bam1_qname(b));
 
               if(0 == (n % 10000)) {
                   fprintf(stderr, "\r%lld", (long long int)n);

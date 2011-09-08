@@ -12,6 +12,7 @@ typedef struct {
     int32_t e; // print only alignments with # of errors
     int32_t g; // gap "wiggle"
     int32_t i; // indel only
+    int32_t m; // multi-mapped
     int32_t n; // # of pe alignments
     int32_t p; // print incorrect alignments or not
     int32_t q; // consider only alignments with this mapping quality or greater
