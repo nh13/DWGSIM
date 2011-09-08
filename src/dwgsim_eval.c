@@ -170,7 +170,7 @@ run(dwgsim_eval_args_t *args,
       }
 
       if(0 == i && 1 == args->p) {
-          fp_out = samopen("-", "w", fp_in->header);
+          fp_out = samopen("-", "wh", fp_in->header);
           if(NULL == fp_out) {
               dwgsim_eval_print_error(FnName, "stdout", "Could not open file stream for writing", Exit, OpenFileError);
           }
