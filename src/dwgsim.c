@@ -147,6 +147,7 @@ dwgsim_opt_t* dwgsim_opt_init()
   opt->e1.start = opt->e1.end = opt->e2.start = opt->e2.end = 0.02;
   opt->e1.by = opt->e2.by = 0;
   opt->dist = 500;
+  opt->std_dev = 50;
   opt->N = 1000000;
   opt->length1 = opt->length2 = 70;
   opt->mut_rate = 0.001;
