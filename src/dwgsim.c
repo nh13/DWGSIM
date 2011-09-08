@@ -1595,7 +1595,7 @@ static int simu_usage(dwgsim_opt_t *opt)
   fprintf(stderr, "         -E FLOAT      base/color error rate of the second read [from %.3f to %.3f by %.3f]\n", opt->e2.start, opt->e2.end, opt->e2.by);
   fprintf(stderr, "         -d INT        inner distance between the two ends [%d]\n", opt->dist);
   fprintf(stderr, "         -s INT        standard deviation [%.3f]\n", opt->std_dev);
-  fprintf(stderr, "         -N INT        number of read pairs [%lld]\n", opt->N);
+  fprintf(stderr, "         -N INT        number of read pairs [%lld]\n", (long long int)opt->N);
   fprintf(stderr, "         -1 INT        length of the first read [%d]\n", opt->length1);
   fprintf(stderr, "         -2 INT        length of the second read [%d]\n", opt->length2);
   fprintf(stderr, "         -r FLOAT      rate of mutations [%.4f]\n", opt->mut_rate);
