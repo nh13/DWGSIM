@@ -84,9 +84,11 @@ typedef struct {
 
 //static mut_t base_shift = 4; // lower 4-bits store the base
 static mut_t muttype_shift = 6; // bits 5-6 store the mutation type
-// bits 7-28 store the insertion
+// bits 7-59 store the insertion
 static mut_t ins_length_shift = 60; // bits 61-64 store the insertion length
 static mut_t ins_length_mask = 0xF; // bits 61-64 store the insertion length
+#define ins_length_max ((ins_length_shift - muttype_shift) >> 1)
+static mut_t ins_mask = 0x3FFFFFFFFFFFFF; // NB: dependent on the # of bits used to store an insertion
 
 typedef struct {
     double start, by, end;
@@ -201,7 +203,7 @@ void dwgsim_opt_destroy(dwgsim_opt_t *opt)
             n_indel_first[x]++;							\
             if(0 == strand[x]) { \
                 n = (c>>ins_length_shift) & ins_length_mask; \
-                ins = c>>muttype_shift; \
+                ins = (c>>muttype_shift) & ins_mask; \
                 while(n > 0 && k < s[x]) { \
                     tmp_seq[x][k++] = ins & 0x3;                \
                     --n, ins >>= 2; \
@@ -210,7 +212,7 @@ void dwgsim_opt_destroy(dwgsim_opt_t *opt)
             } else { \
                 tmp_seq[x][k++] = c & 0xf;						\
                 n = (c>>ins_length_shift) & ins_length_mask; \
-                ins = c>>muttype_shift; \
+                ins = (c>>muttype_shift) & ins_mask; \
                 while(n > 0 && k < s[x]) { \
                     ext_coor[x]++; \
                     tmp_seq[x][k++] = (ins >> ((n-1) << 1) & 0x3);                \
@@ -498,10 +500,10 @@ muts_bed_t *muts_bed_init(FILE *fp, contigs_t *c)
         case SUBSTITUTE:
           break;
         case INSERT:
-          if(((ins_length_shift - muttype_shift) >> 1) < end - start) {
+          if(ins_length_max < end - start) {
               fprintf(stderr, "Error: insertion of length %d exceeded the maximum supported length of %d\n",
                       end - start,
-                      (int32_t)((ins_length_shift - muttype_shift) >> 1));
+                      (int32_t)ins_length_max);
               exit(1);
           }
           break;
@@ -806,7 +808,7 @@ void maq_mut_diref(dwgsim_opt_t *opt, const seq_t *seq, mutseq_t *hap1, mutseq_t
                       do {
                           num_ins++;
                           ins = (ins << 2) | (mut_t)(drand48() * 4.0);
-                      } while (num_ins < ((ins_length_shift - muttype_shift) >> 1) && drand48() < opt->indel_extend);
+                      } while (num_ins < ins_length_max && drand48() < opt->indel_extend);
                       assert(0 < num_ins);
 
                       if (opt->is_hap || drand48() < 0.333333) { // hom-ins
@@ -842,7 +844,7 @@ void maq_mut_diref(dwgsim_opt_t *opt, const seq_t *seq, mutseq_t *hap1, mutseq_t
               else if (INSERT == type) {
                   mut_t num_ins = 0, ins = 0;
                   for (j = strlen(muts_txt->muts[i].bases)-1; 0 <= j; --j) {
-                      if(((ins_length_shift - muttype_shift) >> 1) <= num_ins) break;
+                      if(ins_length_max <= num_ins) break;
                       num_ins++;
                       ins = (ins << 2) | nst_nt4_table[(int)muts_txt->muts[i].bases[j]];
                   } 
@@ -910,7 +912,7 @@ void maq_mut_diref(dwgsim_opt_t *opt, const seq_t *seq, mutseq_t *hap1, mutseq_t
 
                   c = (mut_t)nst_nt4_table[(int)seq->s[muts_bed->muts[i].start]];
                   for (j = muts_bed->muts[i].end-1;
-                       muts_bed->muts[i].start <= j && num_ins < ((ins_length_shift - muttype_shift) >> 1); 
+                       muts_bed->muts[i].start <= j && num_ins < ins_length_max; 
                        --j) { // for each base
                       num_ins++;
                       if(0 == has_bases) {
@@ -919,7 +921,7 @@ void maq_mut_diref(dwgsim_opt_t *opt, const seq_t *seq, mutseq_t *hap1, mutseq_t
                       else {
                           ins = (ins << 2) | (mut_t)(nst_nt4_table[(int)muts_bed->muts[i].bases[j - muts_bed->muts[i].start]]);
                       }
-                  } while (num_ins < ((ins_length_shift - muttype_shift) >> 1) && (1 == has_bases || drand48() < opt->indel_extend));
+                  } while (num_ins < ins_length_max && (1 == has_bases || drand48() < opt->indel_extend));
                   assert(0 < num_ins);
 
                   j = muts_bed->muts[i].start;
@@ -1007,7 +1009,7 @@ void maq_mut_diref(dwgsim_opt_t *opt, const seq_t *seq, mutseq_t *hap1, mutseq_t
                   }
               } else if ((c[1] & mutmsk) == INSERT) { // ins
                   prev_del[0] = prev_del[1] = 0;
-                  mut_t n = (c[1] >> ins_length_shift) & ins_length_mask, ins = c[1] >> muttype_shift;
+                  mut_t n = (c[1] >> ins_length_shift) & ins_length_mask, ins = (c[1] >> muttype_shift) & ins_mask;
                   assert(n > 0);
                   j=i;
                   while(0 < j
@@ -1069,7 +1071,7 @@ void maq_mut_diref(dwgsim_opt_t *opt, const seq_t *seq, mutseq_t *hap1, mutseq_t
                   }
               } else if ((c[1]&mutmsk) == INSERT) { // ins 1
                   prev_del[0] = prev_del[1] = 0;
-                  mut_t n = (c[1] >> ins_length_shift) & ins_length_mask, ins = c[1] >> muttype_shift;
+                  mut_t n = (c[1] >> ins_length_shift) & ins_length_mask, ins = (c[1] >> muttype_shift) & ins_mask;
                   assert(n > 0);
                   j=i;
                   while(0 < j
@@ -1086,7 +1088,7 @@ void maq_mut_diref(dwgsim_opt_t *opt, const seq_t *seq, mutseq_t *hap1, mutseq_t
                   hap1->s[j] = (n << ins_length_shift) | (ins << muttype_shift) | INSERT | (hap1->s[j]&3); // re-insert
               } else if ((c[2]&mutmsk) == INSERT) { // ins 2
                   prev_del[0] = prev_del[1] = 0;
-                  mut_t n = (c[2] >> ins_length_shift) & ins_length_mask, ins = c[2] >> muttype_shift;
+                  mut_t n = (c[2] >> ins_length_shift) & ins_length_mask, ins = (c[2] >> muttype_shift) & ins_mask;
                   assert(n > 0);
                   j=i;
                   while(0 < j
@@ -1133,7 +1135,7 @@ void maq_print_mutref(const char *name, const seq_t *seq, mutseq_t *hap1, mutseq
                   fprintf(fpout, "%c\t-\t3\n", "ACGTN"[c[0]]);
               } else if ((c[1] & mutmsk) == INSERT) { // ins
                   fprintf(fpout, "-\t");
-                  mut_t n = (c[1] >> ins_length_shift) & ins_length_mask, ins = c[1] >> muttype_shift;
+                  mut_t n = (c[1] >> ins_length_shift) & ins_length_mask, ins = (c[1] >> muttype_shift) & ins_mask;
                   assert(n > 0);
                   while(n > 0) {
                       fputc("ACGTN"[ins & 0x3], fpout);
@@ -1152,7 +1154,7 @@ void maq_print_mutref(const char *name, const seq_t *seq, mutseq_t *hap1, mutseq
                   fprintf(fpout, "%c\t-\t2\n", "ACGTN"[c[0]]);
               } else if ((c[1]&mutmsk) == INSERT) { // ins 1
                   fprintf(fpout, "-\t");
-                  mut_t n = (c[1] >> ins_length_shift) & ins_length_mask, ins = c[1] >> muttype_shift;
+                  mut_t n = (c[1] >> ins_length_shift) & ins_length_mask, ins = (c[1] >> muttype_shift) & ins_mask;
                   assert(n > 0);
                   while (n > 0) {
                       fputc("ACGTN"[ins & 0x3], fpout);
@@ -1162,7 +1164,7 @@ void maq_print_mutref(const char *name, const seq_t *seq, mutseq_t *hap1, mutseq
                   fprintf(fpout, "\t1\n");
               } else if ((c[2]&mutmsk) == INSERT) { // ins 2
                   fprintf(fpout, "-\t");
-                  mut_t n = (c[2] >> ins_length_shift) & ins_length_mask, ins = c[2] >> muttype_shift;
+                  mut_t n = (c[2] >> ins_length_shift) & ins_length_mask, ins = (c[2] >> muttype_shift) & ins_mask;
                   assert(n > 0);
                   while (n > 0) {
                       fputc("ACGTN"[ins & 0x3], fpout);
