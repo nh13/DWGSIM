@@ -1426,14 +1426,9 @@ void dwgsim_core(dwgsim_opt_t * opt)
                   if(ILLUMINA == opt->data_type || IONTORRENT == opt->data_type) {
                       fprintf(fpo, "@%s_%u_%u_%1u_%1u_%1u_%1u_%d:%d:%d_%d:%d:%d_%llx/%d\n", 
                               name, ext_coor[0]+1, ext_coor[1]+1, strand[0], strand[1], 0, 0,
-                              n_err[0],
-                              n_sub[0] - n_sub_first[0], 
-                              n_indel[0] - n_indel_first[0], 
-                              n_err[1],
-                              n_sub[1] - n_sub_first[1], 
-                              n_indel[1] - n_indel_first[1],
-                              (long long)ii,
-                              j+1);
+                              n_err[0], n_sub[0], n_indel[0],
+                              n_err[1], n_sub[1],n_indel[1],
+                              (long long)ii, j+1);
                       for (i = 0; i < s[j]; ++i)
                         fputc("ACGTN"[(int)tmp_seq[j][i]], fpo);
                       fprintf(fpo, "\n+\n%s\n", qstr);
@@ -1447,8 +1442,8 @@ void dwgsim_core(dwgsim_opt_t * opt)
                       // annotated as read "1".
                       fprintf(fpo, "@%s_%u_%u_%1u_%1u_%1u_%1u_%d:%d:%d_%d:%d:%d_%llx/%d\n", 
                               name, ext_coor[0]+1, ext_coor[1]+1, strand[0], strand[1], 0, 0,
-                              n_err[0] - n_err_first[0], n_sub[0], n_indel[0], 
-                              n_err[1] - n_err_first[1], n_sub[1], n_indel[1],
+                              n_err[0] - n_err_first[0], n_sub[0] - n_sub_first[0], n_indel[0] - n_indel_first[0], 
+                              n_err[1] - n_err_first[1], n_sub[1] - n_sub_first[1], n_indel[1] - n_indel_first[1],
                               (long long)ii, 2 - j);
                       //fputc('A', fpo);
                       for (i = 1; i < s[j]; ++i)
