@@ -247,6 +247,23 @@ run(dwgsim_eval_args_t *args,
   fprintf(stderr, "Analysis complete.\n");
 }
 
+uint32_t bam_calclip(const bam1_t *b)
+{
+  const bam1_core_t *c = &b->core;
+  const uint32_t *cigar = bam1_cigar(b);
+  uint32_t k, end = 0;
+  for (k = 0; k < c->n_cigar; ++k) {
+      int op = cigar[k] & BAM_CIGAR_MASK;
+      if(op == BAM_CSOFT_CLIP || op == BAM_CHARD_CLIP) {
+        end += cigar[k] >> BAM_CIGAR_SHIFT;
+      }
+      else {
+        break;
+      }
+  }
+  return end;
+}
+
 
 void
 process_bam(dwgsim_eval_counts_t *counts,
@@ -267,6 +284,7 @@ process_bam(dwgsim_eval_counts_t *counts,
   int32_t n_err, n_sub, n_indel;
   int32_t i, j, tmp;
   int32_t predicted_value, actual_value;
+  int32_t clip;
 
   // mapping quality threshold
   if(b->core.qual < args->q) return;
@@ -378,8 +396,9 @@ process_bam(dwgsim_eval_counts_t *counts,
       predicted_value = DWGSIM_EVAL_UNMAPPED;
   }
   else { // mapped (correctly?)
+      clip = bam_calclip(b); 
       chr = header->target_name[b->core.tid];
-      left = b->core.pos;
+      left = b->core.pos - clip;
 
       if(1 == rand || // should not map 
          0 != strcmp(chr, chr_name)  // different chromosome
