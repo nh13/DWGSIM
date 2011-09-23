@@ -133,6 +133,7 @@ typedef struct {
     int32_t seed;
     char *fn_muts_txt;
     char *fn_muts_bed;
+    char *fn_regions_bed;
     FILE *fp_mut;
     FILE *fp_bfast;
     FILE *fp_bwa1;
@@ -163,6 +164,7 @@ dwgsim_opt_t* dwgsim_opt_init()
   opt->seed = -1;
   opt->fn_muts_txt = NULL;
   opt->fn_muts_bed = NULL;
+  opt->fn_regions_bed = NULL;
   opt->fp_mut = opt->fp_bfast = opt->fp_bwa1 = opt->fp_bwa2 = NULL;
   opt->fp_fa = opt->fp_fai = NULL;
 
@@ -173,6 +175,7 @@ void dwgsim_opt_destroy(dwgsim_opt_t *opt)
 {
   free(opt->fn_muts_txt);
   free(opt->fn_muts_bed);
+  free(opt->fn_regions_bed);
   free(opt->flow_order);
   free(opt);
 }
@@ -452,6 +455,8 @@ muts_bed_t *muts_bed_init(FILE *fp, contigs_t *c)
   m->muts = malloc(m->mem * sizeof(mut_bed_t));
 
   i = 0;
+  // start is zero-based
+  // one is one-based
   while(0 < fscanf(fp, "%s\t%u\t%u\t%s\t%s", name, &start, &end, bases, type)) {
       // find the contig
       while(i < c->n && 0 != strcmp(name, c->contigs[i].name)) {
@@ -477,9 +482,9 @@ muts_bed_t *muts_bed_init(FILE *fp, contigs_t *c)
           fprintf(stderr, "Error: bases did not match start and end [%s,%u,%u,%s]\n", name, start, end, bases);
           exit(1);
       }
-      else if(prev_contig == i && start <= max_end) {
-          fprintf(stderr, "Error: overlapping entries\n");
-          exit(1);
+      else if(prev_contig == i && start+1 <= max_end) {
+          fprintf(stderr, "Warning: overlapping entries, ignoring entry [%s\t%u\t%u\t%s\t%s]\n", name, start, end, bases, type);
+          continue;
       }
 
       if(prev_contig != i || max_end < end) {
@@ -533,6 +538,121 @@ void muts_bed_destroy(muts_bed_t *m)
   }
   free(m->muts);
   free(m);
+}
+
+typedef struct {
+    uint32_t *contig;
+    uint32_t *start;
+    uint32_t *end;
+    uint32_t n;
+    uint32_t mem;
+} regions_bed_txt;
+
+regions_bed_txt *regions_bed_init(FILE *fp, contigs_t *c)
+{
+  regions_bed_txt *r = NULL;
+  char name[1024];
+  uint32_t start, end, len;
+  int32_t i, prev_contig, prev_start, prev_end;
+
+  r = calloc(1, sizeof(regions_bed_txt));
+  r->n = 0;
+  r->mem = 4;
+  r->contig = malloc(r->mem * sizeof(uint32_t));
+  r->start = malloc(r->mem * sizeof(uint32_t));
+  r->end = malloc(r->mem * sizeof(uint32_t));
+  
+  i = 0;
+  prev_contig = prev_start = prev_end = -1;
+  while(0 < fscanf(fp, "%s\t%u\t%u\t%u", name, &start, &end, &len)) {
+      // find the contig
+      while(i < c->n && 0 != strcmp(name, c->contigs[i].name)) {
+          i++;
+      }
+      if(c->n == i) {
+          fprintf(stderr, "Error: contig not found [%s]\n", name);
+          exit(1);
+      }
+      else if(c->contigs[i].len < start) {
+          fprintf(stderr, "Error: start out of range [%s,%u]\n", name, start);
+          exit(1);
+      }
+      else if(c->contigs[i].len < end) {
+          fprintf(stderr, "Error: end out of range [%s,%u]\n", name, end);
+          exit(1);
+      }
+      else if(end < start) {
+          fprintf(stderr, "Error: end < start [%s,%u,%u]\n", name, start, end);
+          exit(1);
+      }
+      else if(prev_contig == i && start < prev_start) {
+          fprintf(stderr, "Error: the input was not sorted [%s,%u,%u,%u]\n", name, start, end, len);
+          exit(1);
+      }
+      
+      if(end - start + 1 != len) {
+          fprintf(stderr, "Warning: len != end - start + 1 [%s,%u,%u,%u]\n", name, start, end, len);
+      }
+      
+      if(prev_contig == i && start <= prev_end && prev_start <= start) {
+          if(prev_end < end) {
+              r->end[r->n-1] = end;
+              prev_end = end;
+          }
+      }
+      else {
+          prev_contig = i;
+          prev_start = start;
+          prev_end = end;
+          while(r->mem <= r->n) {
+              r->mem <<= 1;
+              r->contig = realloc(r->contig, r->mem * sizeof(uint32_t));
+              r->start = realloc(r->start, r->mem * sizeof(uint32_t));
+              r->end = realloc(r->end, r->mem * sizeof(uint32_t));
+          }
+          r->contig[r->n] = i;
+          r->start[r->n] = start;
+          r->end[r->n] = end;
+          r->n++;
+      }
+  }
+  return r;
+}
+
+void regions_bed_destroy(regions_bed_txt *r)
+{
+  free(r->contig);
+  free(r->start);
+  free(r->end);
+  free(r);
+}
+
+int32_t regions_bed_query(regions_bed_txt *r, uint32_t contig, uint32_t start, uint32_t end) 
+{
+  int32_t low, high, mid;
+  if(NULL == r) return 1;
+
+  low = 0;
+  high = r->n-1;
+  
+  while(low <= high) {
+      mid = (low + high) / 2;
+      if(contig < r->contig[mid] ||
+         (contig == r->contig[mid] && start < r->start[mid])) {
+          high = mid - 1;
+      }
+      else if(r->contig[mid] < contig ||
+              (r->contig[mid] == contig && r->end[mid] < end)) {
+          low = mid + 1;
+      }
+      else if(r->contig[mid] == contig && r->start[mid] <= start && end <= r->end[mid]) {
+          return 1;
+      }
+      else {
+          break;
+      }
+  }
+  return 0;
 }
 
 /* FASTA parser, copied from seq.c */
@@ -1201,8 +1321,10 @@ void dwgsim_core(dwgsim_opt_t * opt)
   error_t *e[2]={NULL,NULL};
   FILE *fp_muts_txt = NULL;
   FILE *fp_muts_bed = NULL;
+  FILE *fp_regions_bed = NULL;
   muts_txt_t *muts_txt = NULL;
   muts_bed_t *muts_bed = NULL;
+  regions_bed_txt *regions_bed = NULL;
   contigs_t *contigs = NULL;
 
   e[0] = &opt->e[0]; e[1] = &opt->e[1];
@@ -1228,6 +1350,10 @@ void dwgsim_core(dwgsim_opt_t * opt)
   if(NULL != opt->fn_muts_bed) {
       fp_muts_bed = xopen(opt->fn_muts_bed, "r");
       contigs = contigs_init();
+  }
+  if(NULL != opt->fn_regions_bed) {
+      fp_regions_bed = xopen(opt->fn_regions_bed, "r");
+      if(NULL == contigs) contigs = contigs_init();
   }
   
   tot_len = n_ref = 0;
@@ -1256,12 +1382,20 @@ void dwgsim_core(dwgsim_opt_t * opt)
   rewind(opt->fp_fa);
 
   if(NULL != opt->fn_muts_txt) {
-      muts_txt = muts_txt_init(fp_muts_txt, contigs); // read in the BED
-      contigs_destroy(contigs);
-      contigs = NULL;
+      muts_txt = muts_txt_init(fp_muts_txt, contigs); // read in the mutation file
   }
   else if(NULL != opt->fn_muts_bed) {
       muts_bed = muts_bed_init(fp_muts_bed, contigs); // read in the BED
+  }
+  if(NULL != opt->fn_regions_bed) {
+      regions_bed = regions_bed_init(fp_regions_bed, contigs);
+      // recalculate the total length
+      tot_len = 0;
+      for(i=0;i<regions_bed->n;i++) {
+          tot_len += regions_bed->end[i] - regions_bed->start[i] + 1;
+      }
+  }
+  if(NULL != contigs) {
       contigs_destroy(contigs);
       contigs = NULL;
   }
@@ -1271,16 +1405,27 @@ void dwgsim_core(dwgsim_opt_t * opt)
   while ((l = seq_read_fasta(opt->fp_fa, &seq, name, 0)) >= 0) {
       uint64_t n_pairs;
       n_ref--;
+      ii = l;
       if(0 == n_ref) {
           n_pairs = opt->N - n_sim;
       }
       else {
-          n_pairs = (uint64_t)((long double)l / tot_len * opt->N + 0.5);
+          if(NULL != regions_bed) {
+              // recalculate i
+              ii = 0;
+              for(i=0;i<regions_bed->n;i++) {
+                  if(contig_i == regions_bed->contig[i]) {
+                      ii += regions_bed->end[i] - regions_bed->start[i] + 1;
+                  }
+              }
+          }
+          n_pairs = (uint64_t)((long double)ii / tot_len * opt->N + 0.5);
       }
-      if (0 < opt->length[1] && l < opt->dist + 3 * opt->std_dev) {
+      if (0 < opt->length[1] && ii < opt->dist + 3 * opt->std_dev) {
           if(0 == prev_skip) fprintf(stderr, "\n");
           prev_skip = 1;
           fprintf(stderr, "[dwgsim_core] skip sequence '%s' as it is shorter than %f!\n", name, opt->dist + 3 * opt->std_dev);
+          contig_i++;
           continue;
       }
       prev_skip = 0;
@@ -1304,13 +1449,7 @@ void dwgsim_core(dwgsim_opt_t * opt)
 
           if(opt->rand_read < drand48()) { 
 
-              do { // avoid boundary failure
-                  ran = ran_normal();
-                  ran = ran * opt->std_dev + opt->dist;
-                  d = (int)(ran + 0.5);
-                  pos = (int)((l - d + 1) * drand48());
-              } while (pos < 0 || pos >= seq.l || pos + d - 1 >= seq.l);
-
+              // strand
               if(2 == opt->strandedness || (0 == opt->strandedness && ILLUMINA == opt->data_type)) {
                   // opposite strand by default for Illumina
                   strand[0] = 0; strand[1] = 1; 
@@ -1323,12 +1462,26 @@ void dwgsim_core(dwgsim_opt_t * opt)
                   // should not reach here
                   assert(1 == 0);
               }
-
               if (drand48() < 0.5) { // which strand ?
                   // Flip strands 
                   strand[0] = (1 + strand[0]) % 2;
                   strand[1] = (1 + strand[1]) % 2;
               }
+
+              // TODO: there must be a better way to find reads within the BED
+              // regions
+              do { // avoid boundary failure
+                  if(0 < s[1]) {
+                      ran = ran_normal();
+                      ran = ran * opt->std_dev + opt->dist;
+                      d = (int)(ran + 0.5);
+                  }
+                  else {
+                      d = 0;
+                  }
+                  pos = (int)((l - d + 1) * drand48());
+                  //fprintf(stderr, "res=%d contig_i=%d start=%d end=%d\n", res, contig_i, pos, pos + s[0] + s[1] + d - 1);
+              } while (pos < 0 || pos >= seq.l || pos + d - 1 >= seq.l || 0 == regions_bed_query(regions_bed, contig_i, pos, pos + s[0] + s[1] + d - 1));
 
               // generate the read sequences
               target = rseq[drand48()<0.5?0:1].s; // haplotype from which the reads are generated
@@ -1587,6 +1740,10 @@ void dwgsim_core(dwgsim_opt_t * opt)
       muts_bed_destroy(muts_bed);
       fclose(fp_muts_bed);
   }
+  if(NULL != opt->fn_regions_bed) {
+      regions_bed_destroy(regions_bed);
+      fclose(fp_regions_bed);
+  }
 }
 
 #define __check_option(_val, _min, _max, _opt) \
@@ -1629,6 +1786,7 @@ static int simu_usage(dwgsim_opt_t *opt)
   fprintf(stderr, "         -z INT        random seed (-1 uses the current time) [%d]\n", opt->seed);
   fprintf(stderr, "         -m FILE       the mutations txt file to re-create [%s]\n", (NULL == opt->fn_muts_txt) ? "not using" : opt->fn_muts_txt);
   fprintf(stderr, "         -b FILE       the bed-like set of candidate mutations [%s]\n", (NULL == opt->fn_muts_bed) ? "not using" : opt->fn_muts_bed);
+  fprintf(stderr, "         -x FILE       the bed of regions to cover [%s]\n", (NULL == opt->fn_regions_bed) ? "not using" : opt->fn_regions_bed);
   fprintf(stderr, "         -h            print this message\n");
   fprintf(stderr, "\n");
   fprintf(stderr, "Note: For SOLiD mate pair reads and BFAST, the first read is F3 and the second is R3. For SOLiD mate pair reads\n");
@@ -1646,7 +1804,7 @@ int main(int argc, char *argv[])
   char fn_fai[1024]="\0";
   char fn_tmp[1024]="\0";
 
-  while ((c = getopt(argc, argv, "d:s:N:1:2:e:E:r:R:X:c:S:n:y:BHf:z:m:b:h")) >= 0) {
+  while ((c = getopt(argc, argv, "d:s:N:1:2:e:E:r:R:X:c:S:n:y:BHf:z:m:b:x:h")) >= 0) {
       switch (c) {
         case 'd': opt->dist = atoi(optarg); break;
         case 's': opt->std_dev = atof(optarg); break;
@@ -1672,6 +1830,7 @@ int main(int argc, char *argv[])
         case 'z': opt->seed = atoi(optarg); break;
         case 'm': free(opt->fn_muts_txt); opt->fn_muts_txt = strdup(optarg); break;
         case 'b': free(opt->fn_muts_bed); opt->fn_muts_bed = strdup(optarg); break;
+        case 'x': free(opt->fn_regions_bed); opt->fn_regions_bed = strdup(optarg); break;
         default: fprintf(stderr, "Unrecognized option: -%c\n", c); return 1;
       }
   }
