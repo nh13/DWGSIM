@@ -32,13 +32,6 @@
 #include <stdint.h>
 #include <ctype.h>
 #include <string.h>
-/*
-#include "contigs.h"
-#include "mut.h"
-#include "mut_txt.h"
-#include "mut_bed.h"
-#include "regions_bed.h"
-*/
 #include "dwgsim.h"
 #include "dwgsim_opt.h"
 
@@ -50,7 +43,8 @@ dwgsim_opt_t* dwgsim_opt_init()
   opt->e[0].by = opt->e[1].by = 0;
   opt->dist = 500;
   opt->std_dev = 50;
-  opt->N = 1000000;
+  opt->N = -1;
+  opt->C = 100;
   opt->length[0] = opt->length[1] = 70;
   opt->mut_rate = 0.001;
   opt->indel_frac = 0.1;
@@ -92,7 +86,8 @@ int dwgsim_opt_usage(dwgsim_opt_t *opt)
   fprintf(stderr, "         -E FLOAT      per base/color/flow error rate of the second read [from %.3f to %.3f by %.3f]\n", opt->e[1].start, opt->e[1].end, opt->e[1].by);
   fprintf(stderr, "         -d INT        inner distance between the two ends [%d]\n", opt->dist);
   fprintf(stderr, "         -s INT        standard deviation [%.3f]\n", opt->std_dev);
-  fprintf(stderr, "         -N INT        number of read pairs [%lld]\n", opt->N);
+  fprintf(stderr, "         -N INT        number of read pairs (-1 to disable) [%lld]\n", opt->N);
+  fprintf(stderr, "         -C FLOAT      mean coverage across available positions (-1 to disable) [%.2lf]\n", opt->C);
   fprintf(stderr, "         -1 INT        length of the first read [%d]\n", opt->length[0]);
   fprintf(stderr, "         -2 INT        length of the second read [%d]\n", opt->length[1]);
   fprintf(stderr, "         -r FLOAT      rate of mutations [%.4f]\n", opt->mut_rate);
@@ -119,5 +114,97 @@ int dwgsim_opt_usage(dwgsim_opt_t *opt)
   fprintf(stderr, "\n");
   fprintf(stderr, "Note: For SOLiD mate pair reads and BFAST, the first read is F3 and the second is R3. For SOLiD mate pair reads\n");
   fprintf(stderr, "and BWA, the reads in the first file are R3 the reads annotated as the first read etc.\n");
+  return 1;
+}
+
+static void get_error_rate(const char *str, error_t *e)
+{
+  int32_t i;
+
+  e->start = atof(str);
+  for(i=0;i<strlen(str);i++) {
+      if(',' == str[i] || '-' == str[i]) {
+          break;
+      }
+  }
+  if(i<strlen(str)-1) {
+      i++;
+      e->end = atof(str+i);
+  }
+  else {
+      e->end = e->start;
+  }
+}
+
+int32_t
+dwgsim_opt_parse(dwgsim_opt_t *opt, int argc, char *argv[]) 
+{
+  int c;
+  while ((c = getopt(argc, argv, "d:s:N:C:1:2:e:E:r:R:X:c:S:n:y:BHf:z:m:b:x:h")) >= 0) {
+      switch (c) {
+        case 'd': opt->dist = atoi(optarg); break;
+        case 's': opt->std_dev = atof(optarg); break;
+        case 'N': opt->N = atoi(optarg); opt->C = -1; break;
+        case 'C': opt->C = atof(optarg); opt->N = -1; break;
+        case '1': opt->length[0] = atoi(optarg); break;
+        case '2': opt->length[1] = atoi(optarg); break;
+        case 'e': get_error_rate(optarg, &opt->e[0]); break;
+        case 'E': get_error_rate(optarg, &opt->e[1]); break;
+        case 'r': opt->mut_rate = atof(optarg); break;
+        case 'R': opt->indel_frac = atof(optarg); break;
+        case 'X': opt->indel_extend = atof(optarg); break;
+        case 'c': opt->data_type = atoi(optarg); break;
+        case 'S': opt->strandedness = atoi(optarg); break;
+        case 'n': opt->max_n = atoi(optarg); break;
+        case 'y': opt->rand_read = atof(optarg); break;
+        case 'f': 
+                  if(NULL != opt->flow_order) free(opt->flow_order);
+                  opt->flow_order = (int8_t*)strdup(optarg);
+                  break;
+        case 'B': opt->use_base_error = 1; break;
+        case 'H': opt->is_hap = 1; break;
+        case 'h': return 0;
+        case 'z': opt->seed = atoi(optarg); break;
+        case 'm': free(opt->fn_muts_txt); opt->fn_muts_txt = strdup(optarg); break;
+        case 'b': free(opt->fn_muts_bed); opt->fn_muts_bed = strdup(optarg); break;
+        case 'x': free(opt->fn_regions_bed); opt->fn_regions_bed = strdup(optarg); break;
+        default: fprintf(stderr, "Unrecognized option: -%c\n", c); return 0;
+      }
+  }
+  if (argc - optind < 2) return 0;
+
+  __check_option(opt->dist, 0, INT32_MAX, "-d");
+  __check_option(opt->std_dev, 0, INT32_MAX, "-s");
+  if(opt->N < 0 && opt->C < 0) {
+      fprintf(stderr, "Must use one of -N or -C");
+      return 0;
+  }
+  else if(0 < opt->N && 0 < opt->C) {
+      fprintf(stderr, "Cannot use both -N or -C");
+      return 0;
+  }
+  else if(0 < opt->N) {
+      __check_option(opt->N, 1, INT32_MAX, "-N");
+      __check_option(opt->C, INT32_MIN, -1, "-C");
+  }
+  else {
+      __check_option(opt->N, INT32_MIN, -1, "-N");
+      __check_option(opt->C, 1, INT32_MAX, "-C");
+  }
+  __check_option(opt->length[0], 1, INT32_MAX, "-1");
+  __check_option(opt->length[1], 0, INT32_MAX, "-2");
+  // error rate
+  if(IONTORRENT == opt->data_type) {
+      if(opt->e[0].end != opt->e[0].start) {
+          fprintf(stderr, "End one: a uniform error rate must be given for Ion Torrent data");
+          return 0;
+      }
+      if(opt->e[1].end != opt->e[1].start) {
+          fprintf(stderr, "End two: a uniform error rate must be given for Ion Torrent data");
+          return 0;
+      }
+  }
+  __check_option(opt->mut_rate, 0, 1.0, "-r");
+
   return 1;
 }

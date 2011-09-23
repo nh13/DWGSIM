@@ -32,8 +32,6 @@
 /* This program was modified by Nils Homer for inclusion in the 
  * DNAA package */
 
-// TODO: refactor a lot of this code into separate source files
-
 #include <stdlib.h>
 #include <math.h>
 #include <time.h>
@@ -51,8 +49,6 @@
 #include "dwgsim_opt.h"
 #include "dwgsim.h"
 //#include <config.h>
-
-static int32_t ERROR_RATE_NUM_RANDOM_READS = 1000000;
 
 uint8_t nst_nt4_table[256] = {
     4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4, 
@@ -72,25 +68,6 @@ uint8_t nst_nt4_table[256] = {
     4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4, 
     4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4
 };
-
-static void get_error_rate(const char *str, error_t *e)
-{
-  int32_t i;
-
-  e->start = atof(str);
-  for(i=0;i<strlen(str);i++) {
-      if(',' == str[i] || '-' == str[i]) {
-          break;
-      }
-  }
-  if(i<strlen(str)-1) {
-      i++;
-      e->end = atof(str+i);
-  }
-  else {
-      e->end = e->start;
-  }
-}
 
 #define __gen_read(x, start, iter) do {									\
     for (i = (start), k = 0, ext_coor[x] = -10; i >= 0 && i < seq.l && k < s[x]; iter) {	\
@@ -484,23 +461,33 @@ void dwgsim_core(dwgsim_opt_t * opt)
   while ((l = seq_read_fasta(opt->fp_fa, &seq, name, 0)) >= 0) {
       uint64_t n_pairs;
       n_ref--;
-      ii = l;
-      if(0 == n_ref) {
+
+      if(0 == n_ref && opt->C < 0) {
           n_pairs = opt->N - n_sim;
       }
       else {
           if(NULL != regions_bed) {
-              // recalculate i
-              ii = 0;
+              // recalculate l
+              l = 0;
               for(i=0;i<regions_bed->n;i++) {
                   if(contig_i == regions_bed->contig[i]) {
-                      ii += regions_bed->end[i] - regions_bed->start[i] + 1;
+                      l += regions_bed->end[i] - regions_bed->start[i] + 1;
                   }
               }
           }
-          n_pairs = (uint64_t)((long double)ii / tot_len * opt->N + 0.5);
+          if(0 < opt->N) {
+              // based on -N
+              n_pairs = (uint64_t)((long double)l / tot_len * opt->N + 0.5);
+          }
+          else {
+              // based on coverage
+              n_pairs = (uint64_t)(l * opt->C / ((long double)(size[0] + size[1])) + 0.5);
+          }
       }
-      if (0 < opt->length[1] && ii < opt->dist + 3 * opt->std_dev) {
+
+      // for paired end/mate pair, make sure we have enough bases in this
+      // sequence
+      if (0 < opt->length[1] && l < opt->dist + 3 * opt->std_dev) {
           if(0 == prev_skip) fprintf(stderr, "\n");
           prev_skip = 1;
           fprintf(stderr, "[dwgsim_core] skip sequence '%s' as it is shorter than %f!\n", name, opt->dist + 3 * opt->std_dev);
@@ -547,20 +534,45 @@ void dwgsim_core(dwgsim_opt_t * opt)
                   strand[1] = (1 + strand[1]) % 2;
               }
 
-              // TODO: there must be a better way to find reads within the BED
-              // regions
-              do { // avoid boundary failure
-                  if(0 < s[1]) {
-                      ran = ran_normal();
-                      ran = ran * opt->std_dev + opt->dist;
-                      d = (int)(ran + 0.5);
-                  }
-                  else {
-                      d = 0;
-                  }
-                  pos = (int)((l - d + 1) * drand48());
-                  //fprintf(stderr, "res=%d contig_i=%d start=%d end=%d\n", res, contig_i, pos, pos + s[0] + s[1] + d - 1);
-              } while (pos < 0 || pos >= seq.l || pos + d - 1 >= seq.l || 0 == regions_bed_query(regions_bed, contig_i, pos, pos + s[0] + s[1] + d - 1));
+              if(NULL == regions_bed) {
+                  do { // avoid boundary failure
+                      if(0 < s[1]) { // paired end/mate pair
+                          ran = ran_normal();
+                          ran = ran * opt->std_dev + opt->dist;
+                          d = (int)(ran + 0.5);
+                      }
+                      else {
+                          d = 0;
+                      }
+                      pos = (int)((l - d + 1) * drand48());
+                  } while (pos < 0 || pos >= seq.l || pos + d - 1 >= seq.l);
+              } 
+              else {
+                  do { // avoid boundary failure
+                      if(0 < s[1]) {
+                          ran = ran_normal();
+                          ran = ran * opt->std_dev + opt->dist;
+                          d = (int)(ran + 0.5);
+                      }
+                      else {
+                          d = 0;
+                      }
+                      pos = (int)((l - d + 1) * drand48());
+                      // convert in the bed file
+                      for(i=0;i<regions_bed->n;i++) { // TODO: regions are in sorted order... so optimize
+                          if(contig_i == regions_bed->contig[i]) {
+                              j = regions_bed->end[i] - regions_bed->start[i] + 1;
+                              if(pos < j) {
+                                  pos = regions_bed->start[i] + pos - 1; // zero-based
+                                  break;
+                              }
+                              else {
+                                  pos -= j;
+                              }
+                          }
+                      }
+                  } while (pos < 0 || pos >= seq.l || pos + d - 1 >= seq.l || 0 == regions_bed_query(regions_bed, contig_i, pos, pos + s[0] + s[1] + d - 1));
+              }
 
               // generate the read sequences
               target = rseq[drand48()<0.5?0:1].s; // haplotype from which the reads are generated
@@ -831,139 +843,11 @@ int main(int argc, char *argv[])
 
   opt = dwgsim_opt_init();
 
-  int i, c;
   char fn_fai[1024]="\0";
   char fn_tmp[1024]="\0";
 
-  while ((c = getopt(argc, argv, "d:s:N:1:2:e:E:r:R:X:c:S:n:y:BHf:z:m:b:x:h")) >= 0) {
-      switch (c) {
-        case 'd': opt->dist = atoi(optarg); break;
-        case 's': opt->std_dev = atof(optarg); break;
-        case 'N': opt->N = atoi(optarg); break;
-        case '1': opt->length[0] = atoi(optarg); break;
-        case '2': opt->length[1] = atoi(optarg); break;
-        case 'e': get_error_rate(optarg, &opt->e[0]); break;
-        case 'E': get_error_rate(optarg, &opt->e[1]); break;
-        case 'r': opt->mut_rate = atof(optarg); break;
-        case 'R': opt->indel_frac = atof(optarg); break;
-        case 'X': opt->indel_extend = atof(optarg); break;
-        case 'c': opt->data_type = atoi(optarg); break;
-        case 'S': opt->strandedness = atoi(optarg); break;
-        case 'n': opt->max_n = atoi(optarg); break;
-        case 'y': opt->rand_read = atof(optarg); break;
-        case 'f': 
-                  if(NULL != opt->flow_order) free(opt->flow_order);
-                  opt->flow_order = (int8_t*)strdup(optarg);
-                  break;
-        case 'B': opt->use_base_error = 1; break;
-        case 'H': opt->is_hap = 1; break;
-        case 'h': return dwgsim_opt_usage(opt);
-        case 'z': opt->seed = atoi(optarg); break;
-        case 'm': free(opt->fn_muts_txt); opt->fn_muts_txt = strdup(optarg); break;
-        case 'b': free(opt->fn_muts_bed); opt->fn_muts_bed = strdup(optarg); break;
-        case 'x': free(opt->fn_regions_bed); opt->fn_regions_bed = strdup(optarg); break;
-        default: fprintf(stderr, "Unrecognized option: -%c\n", c); return 1;
-      }
-  }
-  if (argc - optind < 2) return dwgsim_opt_usage(opt);
-
-  __check_option(opt->dist, 0, INT32_MAX, "-d");
-  __check_option(opt->std_dev, 0, INT32_MAX, "-s");
-  __check_option(opt->N, 1, INT32_MAX, "-N");
-  __check_option(opt->length[0], 1, INT32_MAX, "-1");
-  __check_option(opt->length[1], 0, INT32_MAX, "-2");
-  // error rate
-  if(IONTORRENT == opt->data_type) {
-      if(opt->e[0].end != opt->e[0].start) {
-          fprintf(stderr, "End one: a uniform error rate must be given for Ion Torrent data");
-          return 1;
-      }
-      if(opt->e[1].end != opt->e[1].start) {
-          fprintf(stderr, "End two: a uniform error rate must be given for Ion Torrent data");
-          return 1;
-      }
-  }
-  __check_option(opt->mut_rate, 0, 1.0, "-r");
-  __check_option(opt->indel_frac, 0, 1.0, "-R");
-  __check_option(opt->indel_extend, 0, 1.0, "-X");
-  __check_option(opt->data_type, 0, 2, "-c");
-  __check_option(opt->strandedness, 0, 2, "-S");
-  __check_option(opt->max_n, 0, INT32_MAX, "-n");
-  __check_option(opt->rand_read, 0, 1.0, "-y");
-  if(IONTORRENT == opt->data_type && NULL == opt->flow_order) {
-      fprintf(stderr, "Error: command line option -f is required\n");
-      return 1;
-  }
-  __check_option(opt->use_base_error, 0, 1, "-B");
-  __check_option(opt->is_hap, 0, 1, "-H");
-  
-  if(NULL != opt->fn_muts_txt && NULL != opt->fn_muts_bed) {
-      fprintf(stderr, "Error: -m and -b cannot be used together\n");
-      return 1;
-  }
-  
-  // random seed
-  srand48((-1 == opt->seed) ? time(0) : opt->seed);
-
-  if(IONTORRENT == opt->data_type && NULL != opt->flow_order) {
-      // uniform error rates only (so far)
-      if(opt->e[0].start != opt->e[0].end || opt->e[1].start != opt->e[1].end) {
-          fprintf(stderr, "Error: non-uniform error rate not support for Ion Torrent data\n");
-          return 1;
-      }
-      // update flow order
-      opt->flow_order_len = strlen((char*)opt->flow_order);
-      for(i=0;i<opt->flow_order_len;i++) {
-          opt->flow_order[i] = nst_nt4_table[opt->flow_order[i]];
-      }
-  }
-  // use base error rate
-  if(IONTORRENT == opt->data_type && NULL != opt->flow_order && 1 == opt->use_base_error) {
-      uint8_t *tmp_seq=NULL;
-      uint8_t *tmp_seq_flow_mask=NULL;
-      int32_t tmp_seq_mem, s, cur_n_err, n_err, counts;
-      int32_t j, k;
-      double sf = 0.0;
-      for(i=0;i<2;i++) {
-          if(opt->length[i] <= 0) continue;
-          fprintf(stderr, "[dwgsim_core] Updating error rate for end %d\n", i+1);
-          if(0 < i && opt->length[i] == opt->length[1-i]) {
-              opt->e[i].start = opt->e[1-i].start;
-              opt->e[i].end = opt->e[1-i].end;
-              opt->e[i].by = opt->e[1-i].by;
-              fprintf(stderr, "[dwgsim_core] Using scaling factor from previous end\n[dwgsim_core] Updated with scaling factor %.5lf\n", sf);
-              continue;
-          }
-          tmp_seq_mem = opt->length[i]+2;
-          tmp_seq = (uint8_t*)calloc(tmp_seq_mem, 1);
-          tmp_seq_flow_mask = (uint8_t*)calloc(tmp_seq_mem, 1);
-          n_err = counts = 0;
-          for(j=0;j<ERROR_RATE_NUM_RANDOM_READS;j++) {
-              if(0 == (j % 10000)) { 
-                  fprintf(stderr, "\r[dwgsim_core] %d", j);
-              }
-              for(k=0;k<opt->length[i];k++) {
-                  tmp_seq[k] = (int)(drand48() * 4.0) & 3;
-              }
-              cur_n_err = 0;
-              s = opt->length[i];
-              s = generate_errors_flows(opt, &tmp_seq, &tmp_seq_flow_mask, &tmp_seq_mem, s, 0, opt->e[i].start, &cur_n_err);
-              n_err += cur_n_err;
-              counts += s;
-          }
-          //fprintf(stderr, "before %lf,%lf,%lf\n", opt->e[i].start, opt->e[i].by, opt->e[i].end); 
-          sf = opt->e[i].start / (n_err / (1.0 * counts));
-          opt->e[i].start = opt->e[i].end *= sf;
-          opt->e[i].by = (opt->e[i].end - opt->e[i].start) / opt->length[i];
-          //fprintf(stderr, "after %lf,%lf,%lf\n", opt->e[i].start, opt->e[i].by, opt->e[i].end); 
-          free(tmp_seq);
-          free(tmp_seq_flow_mask);
-          fprintf(stderr, "\r[dwgsim_core] %d\n[dwgsim_core] Updated with scaling factor %.5lf!\n", j, sf);
-      }
-  }
-  else {
-      opt->e[0].by = (opt->e[0].end - opt->e[0].start) / opt->length[0];
-      opt->e[1].by = (opt->e[1].end - opt->e[1].start) / opt->length[1];
+  if(0 == dwgsim_opt_parse(opt, argc, argv)) {
+      return dwgsim_opt_usage(opt);
   }
 
   // Open files

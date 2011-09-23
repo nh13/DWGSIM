@@ -10,6 +10,7 @@ typedef struct {
     int32_t dist;
     double std_dev;
     int64_t N;
+    double C;
     int32_t length[2];
     double mut_rate;
     double indel_frac;
@@ -43,10 +44,13 @@ dwgsim_opt_destroy(dwgsim_opt_t *opt);
 #define __check_option(_val, _min, _max, _opt) \
   if(_val < _min || _max < _val) { \
       fprintf(stderr, "Error: command line option %s was out of range\n", _opt); \
-      exit(1); \
+      return 0; \
   } 
 
 int 
 dwgsim_opt_usage(dwgsim_opt_t *opt);
+
+int32_t
+dwgsim_opt_parse(dwgsim_opt_t *opt, int argc, char *argv[]); 
 
 #endif
