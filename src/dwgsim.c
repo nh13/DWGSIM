@@ -481,7 +481,7 @@ void dwgsim_core(dwgsim_opt_t * opt)
           }
           else {
               // based on coverage
-              n_pairs = (uint64_t)(l * opt->C / ((long double)(size[0] + size[1])) + 0.5);
+              n_pairs = (uint64_t)(l * opt->C / ((long double)(size[0] + size[1])) / (1.0 - opt->rand_read) + 0.5);
           }
       }
 
@@ -817,7 +817,7 @@ void dwgsim_core(dwgsim_opt_t * opt)
               (unsigned long long int)ctr);
       contig_i++;
   }
-  fprintf(stderr, "\r[dwgsim_core] Complete!\n");
+  fprintf(stderr, "\n[dwgsim_core] Complete!\n");
   free(seq.s); free(qstr);
   free(tmp_seq[0]); free(tmp_seq[1]);
   if(IONTORRENT == opt->data_type) {
