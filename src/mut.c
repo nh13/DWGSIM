@@ -39,12 +39,6 @@
 #include "dwgsim_opt.h"
 #include "mut.h"
 
-mut_t mutmsk = (mut_t)0x30;
-mut_t muttype_shift = 6; // bits 5-6 store the mutation type
-mut_t ins_length_shift = 60; // bits 61-64 store the insertion length
-mut_t ins_length_mask = 0xF; // bits 61-64 store the insertion length
-mut_t ins_mask = 0x3FFFFFFFFFFFFF; // NB: dependent on the # of bits used to store an insertion
-
 static int SEQ_BLOCK_SIZE = 512;
 
 void seq_set_block_size(int size)
@@ -92,9 +86,35 @@ int seq_read_fasta(FILE *fp, seq_t *seq, char *locus, char *comment)
   return l;
 } 
 
+mut_t mutmsk;
+mut_t muttype_shift;
+mut_t ins_length_shift;
+mut_t ins_length_mask;
+mut_t ins_length_max;
+mut_t ins_mask;
+
+void mut_init()
+{
+  int32_t i;
+
+  mutmsk = (mut_t)0x30;
+  muttype_shift = 6; // bits 5-6 store the mutation type
+  ins_length_shift = 59; // bits 60-64 store the insertion length
+  ins_length_mask = 0x1F; // bits 60-64 store the insertion length
+  ins_length_max = ((ins_length_shift - muttype_shift) >> 1);
+  if(ins_length_mask < ins_length_max) { // we exceed storing the length of the indel
+      ins_length_max = ins_length_mask;
+  }
+  // create the insertion mask based on the maximum length insertion
+  ins_mask = 0;
+  for(i=0;i<ins_length_max;i++) {
+      ins_mask = (ins_mask << 2) | 0x3; 
+  }
+}
+
 void mut_diref(dwgsim_opt_t *opt, const seq_t *seq, mutseq_t *hap1, mutseq_t *hap2, int32_t contig_i, muts_txt_t *muts_txt, muts_bed_t *muts_bed)
 {
-  int32_t i, j, deleting = 0;
+  int32_t i, j, deleting = 0, deletion_length = 0;
   mutseq_t *ret[2];
 
   ret[0] = hap1; ret[1] = hap2;
@@ -108,11 +128,12 @@ void mut_diref(dwgsim_opt_t *opt, const seq_t *seq, mutseq_t *hap1, mutseq_t *ha
           mut_t c;
           c = ret[0]->s[i] = ret[1]->s[i] = (mut_t)nst_nt4_table[(int)seq->s[i]];
           if (deleting) {
-              if (drand48() < opt->indel_extend) {
+              if (deletion_length < opt->indel_min || drand48() < opt->indel_extend) {
                   if (deleting & 1) ret[0]->s[i] |= DELETE|c;
                   if (deleting & 2) ret[1]->s[i] |= DELETE|c;
+                  deletion_length++;
                   continue;
-              } else deleting = 0;
+              } else deleting = deletion_length = 0;
           }
           if (c < 4 && drand48() < opt->mut_rate) { // mutation
               if (drand48() >= opt->indel_frac) { // substitution
@@ -132,12 +153,13 @@ void mut_diref(dwgsim_opt_t *opt, const seq_t *seq, mutseq_t *hap1, mutseq_t *ha
                           deleting = drand48()<0.5?1:2;
                           ret[deleting-1]->s[i] = DELETE|c;
                       }
+                      deletion_length = 1;
                   } else { // insertion
                       mut_t num_ins = 0, ins = 0;
                       do {
                           num_ins++;
                           ins = (ins << 2) | (mut_t)(drand48() * 4.0);
-                      } while (num_ins < ins_length_max && drand48() < opt->indel_extend);
+                      } while (num_ins < ins_length_max && (num_ins < opt->indel_min || drand48() < opt->indel_extend));
                       assert(0 < num_ins);
 
                       if (opt->is_hap || drand48() < 0.333333) { // hom-ins

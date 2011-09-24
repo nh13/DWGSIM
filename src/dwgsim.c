@@ -212,7 +212,7 @@ FILE *err_xopen_core(const char *func, const char *fn, const char *mode)
     } \
 } while(0)
 
-static int32_t
+int32_t
 generate_errors_flows(dwgsim_opt_t *opt, uint8_t **seq, uint8_t **mask, int32_t *mem, int32_t len, uint8_t strand, double e, int32_t *_n_err)
 {
   int32_t i, j, k, hp_l, flow_i, n_err;

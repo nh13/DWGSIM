@@ -1,6 +1,8 @@
 #ifndef DWGSIM_OPT_H
 #define DWGSIM_OPT_H
 
+#define ERROR_RATE_NUM_RANDOM_READS 1000000
+
 typedef struct {
     double start, by, end;
 } error_t;
@@ -15,6 +17,7 @@ typedef struct {
     double mut_rate;
     double indel_frac;
     double indel_extend;
+    int32_t indel_min;
     double rand_read;
     int32_t max_n;
     int32_t data_type;

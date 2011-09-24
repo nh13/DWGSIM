@@ -32,6 +32,7 @@
 #include <stdint.h>
 #include <ctype.h>
 #include <string.h>
+#include "mut.h"
 #include "dwgsim.h"
 #include "dwgsim_opt.h"
 
@@ -49,6 +50,7 @@ dwgsim_opt_t* dwgsim_opt_init()
   opt->mut_rate = 0.001;
   opt->indel_frac = 0.1;
   opt->indel_extend = 0.3;
+  opt->indel_min = 1;
   opt->rand_read = 0.05;
   opt->data_type = ILLUMINA;
   opt->max_n = 0;
@@ -86,13 +88,14 @@ int dwgsim_opt_usage(dwgsim_opt_t *opt)
   fprintf(stderr, "         -E FLOAT      per base/color/flow error rate of the second read [from %.3f to %.3f by %.3f]\n", opt->e[1].start, opt->e[1].end, opt->e[1].by);
   fprintf(stderr, "         -d INT        inner distance between the two ends [%d]\n", opt->dist);
   fprintf(stderr, "         -s INT        standard deviation [%.3f]\n", opt->std_dev);
-  fprintf(stderr, "         -N INT        number of read pairs (-1 to disable) [%lld]\n", opt->N);
+  fprintf(stderr, "         -N INT        number of read pairs (-1 to disable) [%lld]\n", (signed long long int)opt->N);
   fprintf(stderr, "         -C FLOAT      mean coverage across available positions (-1 to disable) [%.2lf]\n", opt->C);
   fprintf(stderr, "         -1 INT        length of the first read [%d]\n", opt->length[0]);
   fprintf(stderr, "         -2 INT        length of the second read [%d]\n", opt->length[1]);
   fprintf(stderr, "         -r FLOAT      rate of mutations [%.4f]\n", opt->mut_rate);
   fprintf(stderr, "         -R FLOAT      fraction of mutations that are indels [%.2f]\n", opt->indel_frac);
   fprintf(stderr, "         -X FLOAT      probability an indel is extended [%.2f]\n", opt->indel_extend);
+  fprintf(stderr, "         -I INT        the minimum length indel [%d]\n", opt->indel_min);
   fprintf(stderr, "         -y FLOAT      probability of a random DNA read [%.2f]\n", opt->rand_read);
   fprintf(stderr, "         -n INT        maximum number of Ns allowed in a given read [%d]\n", opt->max_n);
   fprintf(stderr, "         -c INT        generate reads for [%d]:\n", opt->data_type);
@@ -114,6 +117,9 @@ int dwgsim_opt_usage(dwgsim_opt_t *opt)
   fprintf(stderr, "\n");
   fprintf(stderr, "Note: For SOLiD mate pair reads and BFAST, the first read is F3 and the second is R3. For SOLiD mate pair reads\n");
   fprintf(stderr, "and BWA, the reads in the first file are R3 the reads annotated as the first read etc.\n");
+  fprintf(stderr, "\n");
+  fprintf(stderr, "Note: The longest supported insertion is %d.\n", (int)ins_length_max);
+  fprintf(stderr, "\n");
   return 1;
 }
 
@@ -139,8 +145,13 @@ static void get_error_rate(const char *str, error_t *e)
 int32_t
 dwgsim_opt_parse(dwgsim_opt_t *opt, int argc, char *argv[]) 
 {
+  int32_t i;
   int c;
-  while ((c = getopt(argc, argv, "d:s:N:C:1:2:e:E:r:R:X:c:S:n:y:BHf:z:m:b:x:h")) >= 0) {
+  
+  // initialize mutation variables
+  mut_init();
+
+  while ((c = getopt(argc, argv, "d:s:N:C:1:2:e:E:r:R:X:I:c:S:n:y:BHf:z:m:b:x:h")) >= 0) {
       switch (c) {
         case 'd': opt->dist = atoi(optarg); break;
         case 's': opt->std_dev = atof(optarg); break;
@@ -153,6 +164,7 @@ dwgsim_opt_parse(dwgsim_opt_t *opt, int argc, char *argv[])
         case 'r': opt->mut_rate = atof(optarg); break;
         case 'R': opt->indel_frac = atof(optarg); break;
         case 'X': opt->indel_extend = atof(optarg); break;
+        case 'I': opt->indel_min = atoi(optarg); break;
         case 'c': opt->data_type = atoi(optarg); break;
         case 'S': opt->strandedness = atoi(optarg); break;
         case 'n': opt->max_n = atoi(optarg); break;
@@ -197,14 +209,96 @@ dwgsim_opt_parse(dwgsim_opt_t *opt, int argc, char *argv[])
   if(IONTORRENT == opt->data_type) {
       if(opt->e[0].end != opt->e[0].start) {
           fprintf(stderr, "End one: a uniform error rate must be given for Ion Torrent data");
-          return 0;
+          return 1;
       }
       if(opt->e[1].end != opt->e[1].start) {
           fprintf(stderr, "End two: a uniform error rate must be given for Ion Torrent data");
-          return 0;
+          return 1;
       }
   }
   __check_option(opt->mut_rate, 0, 1.0, "-r");
+  __check_option(opt->indel_frac, 0, 1.0, "-R");
+  __check_option(opt->indel_extend, 0, 1.0, "-X");
+  __check_option(opt->indel_min, 1, INT32_MAX, "-I");
+  __check_option(opt->data_type, 0, 2, "-c");
+  __check_option(opt->strandedness, 0, 2, "-S");
+  __check_option(opt->max_n, 0, INT32_MAX, "-n");
+  __check_option(opt->rand_read, 0, 1.0, "-y");
+  if(IONTORRENT == opt->data_type && NULL == opt->flow_order) {
+      fprintf(stderr, "Error: command line option -f is required\n");
+      return 1;
+  }
+  __check_option(opt->use_base_error, 0, 1, "-B");
+  __check_option(opt->is_hap, 0, 1, "-H");
+  
+  if(NULL != opt->fn_muts_txt && NULL != opt->fn_muts_bed) {
+      fprintf(stderr, "Error: -m and -b cannot be used together\n");
+      return 1;
+  }
+  
+  // random seed
+  srand48((-1 == opt->seed) ? time(0) : opt->seed);
+
+  if(IONTORRENT == opt->data_type && NULL != opt->flow_order) {
+      // uniform error rates only (so far)
+      if(opt->e[0].start != opt->e[0].end || opt->e[1].start != opt->e[1].end) {
+          fprintf(stderr, "Error: non-uniform error rate not support for Ion Torrent data\n");
+          return 1;
+      }
+      // update flow order
+      opt->flow_order_len = strlen((char*)opt->flow_order);
+      for(i=0;i<opt->flow_order_len;i++) {
+          opt->flow_order[i] = nst_nt4_table[opt->flow_order[i]];
+      }
+  }
+  // use base error rate
+  if(IONTORRENT == opt->data_type && NULL != opt->flow_order && 1 == opt->use_base_error) {
+      uint8_t *tmp_seq=NULL;
+      uint8_t *tmp_seq_flow_mask=NULL;
+      int32_t tmp_seq_mem, s, cur_n_err, n_err, counts;
+      int32_t j, k;
+      double sf = 0.0;
+      for(i=0;i<2;i++) {
+          if(opt->length[i] <= 0) continue;
+          fprintf(stderr, "[dwgsim_core] Updating error rate for end %d\n", i+1);
+          if(0 < i && opt->length[i] == opt->length[1-i]) {
+              opt->e[i].start = opt->e[1-i].start;
+              opt->e[i].end = opt->e[1-i].end;
+              opt->e[i].by = opt->e[1-i].by;
+              fprintf(stderr, "[dwgsim_core] Using scaling factor from previous end\n[dwgsim_core] Updated with scaling factor %.5lf\n", sf);
+              continue;
+          }
+          tmp_seq_mem = opt->length[i]+2;
+          tmp_seq = (uint8_t*)calloc(tmp_seq_mem, 1);
+          tmp_seq_flow_mask = (uint8_t*)calloc(tmp_seq_mem, 1);
+          n_err = counts = 0;
+          for(j=0;j<ERROR_RATE_NUM_RANDOM_READS;j++) {
+              if(0 == (j % 10000)) {
+                  fprintf(stderr, "\r[dwgsim_core] %d", j);
+              }
+              for(k=0;k<opt->length[i];k++) {
+                  tmp_seq[k] = (int)(drand48() * 4.0) & 3;
+              }
+              cur_n_err = 0;
+              s = opt->length[i];
+              s = generate_errors_flows(opt, &tmp_seq, &tmp_seq_flow_mask, &tmp_seq_mem, s, 0, opt->e[i].start, &cur_n_err);
+              n_err += cur_n_err;
+              counts += s;
+          }
+          //fprintf(stderr, "before %lf,%lf,%lf\n", opt->e[i].start, opt->e[i].by, opt->e[i].end); 
+          sf = opt->e[i].start / (n_err / (1.0 * counts));
+          opt->e[i].start = opt->e[i].end *= sf;
+          opt->e[i].by = (opt->e[i].end - opt->e[i].start) / opt->length[i];
+          //fprintf(stderr, "after %lf,%lf,%lf\n", opt->e[i].start, opt->e[i].by, opt->e[i].end); 
+          free(tmp_seq);
+          free(tmp_seq_flow_mask);
+          fprintf(stderr, "\r[dwgsim_core] %d\n[dwgsim_core] Updated with scaling factor %.5lf!\n", j, sf);
+      }
+  }
+  else {
+      opt->e[0].by = (opt->e[0].end - opt->e[0].start) / opt->length[0];
+      opt->e[1].by = (opt->e[1].end - opt->e[1].start) / opt->length[1];
+  }
 
   return 1;
 }

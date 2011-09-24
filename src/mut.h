@@ -1,6 +1,7 @@
 #ifndef MUT_H
 #define MUT_H
 
+#include "contigs.h"
 #include "mut_txt.h"
 #include "mut_bed.h"
 #include "dwgsim_opt.h"
@@ -29,18 +30,19 @@ enum muttype_t {
 
 typedef uint64_t mut_t;
 extern mut_t mutmsk;
+extern mut_t muttype_shift; 
+extern mut_t ins_length_shift;
+extern mut_t ins_length_mask;
+extern mut_t ins_length_max;
+extern mut_t ins_mask;
 
 typedef struct {
     int l, m; /* length and maximum buffer size */
     mut_t *s; /* sequence */
 } mutseq_t;
 
-// how we store mutation info in the reference
-extern mut_t muttype_shift; 
-extern mut_t ins_length_shift;
-extern mut_t ins_length_mask;
-#define ins_length_max ((ins_length_shift - muttype_shift) >> 1)
-extern mut_t ins_mask;
+void 
+mut_init();
 
 void 
 mut_diref(dwgsim_opt_t *opt, const seq_t *seq, mutseq_t *hap1, mutseq_t *hap2, int32_t contig_i, muts_txt_t *muts_txt, muts_bed_t *muts_bed);
