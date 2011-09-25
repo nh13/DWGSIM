@@ -71,7 +71,7 @@ uint8_t nst_nt4_table[256] = {
 
 #define __gen_read(x, start, iter) do {									\
     for (i = (start), k = 0, ext_coor[x] = -10; i >= 0 && i < seq.l && k < s[x]; iter) {	\
-        mut_t c = target[i], mut_type = c & mutmsk;			\
+        mut_t c = currseq->s[i], mut_type = c & mutmsk;			\
         if (ext_coor[x] < 0) {								\
             if (mut_type != NOCHANGE && mut_type != SUBSTITUTE) continue; \
             ext_coor[x] = i;								\
@@ -93,25 +93,52 @@ uint8_t nst_nt4_table[256] = {
             assert(mut_type == INSERT); \
             ++n_indel[x];									\
             n_indel_first[x]++;							\
-            if(0 == strand[x]) { \
-                n = (c>>ins_length_shift) & ins_length_mask; \
-                ins = (c>>muttype_shift) & ins_mask; \
-                while(n > 0 && k < s[x]) { \
-                    tmp_seq[x][k++] = ins & 0x3;                \
-                    --n, ins >>= 2; \
+            if(1 == mut_get_ins(currseq, i, &n, &ins)) { \
+                if(0 == strand[x]) { \
+                    while(n > 0 && k < s[x]) { \
+                        tmp_seq[x][k++] = ins & 0x3;                \
+                        --n, ins >>= 2; \
+                    } \
+                    if(k < s[x]) tmp_seq[x][k++] = c & 0xf;						\
+                } else { \
+                    tmp_seq[x][k++] = c & 0xf;						\
+                    while(n > 0 && k < s[x]) { \
+                        ext_coor[x]++; \
+                        tmp_seq[x][k++] = (ins >> ((n-1) << 1) & 0x3);                \
+                        --n; \
+                    } \
                 } \
-                if(k < s[x]) tmp_seq[x][k++] = c & 0xf;						\
             } else { \
-                tmp_seq[x][k++] = c & 0xf;						\
-                n = (c>>ins_length_shift) & ins_length_mask; \
-                ins = (c>>muttype_shift) & ins_mask; \
-                while(n > 0 && k < s[x]) { \
-                    ext_coor[x]++; \
-                    tmp_seq[x][k++] = (ins >> ((n-1) << 1) & 0x3);                \
-                    --n; \
+                int32_t byte_index, bit_index; \
+                n = currseq->ins[ins][0]; \
+                if(0 == strand[x]) { \
+                    byte_index = mut_get_ins_bytes(n)-1; bit_index = n & 3; \
+                    while(n > 0 && k < s[x]) { \
+                        tmp_seq[x][k++] = (currseq->ins[ins][byte_index] >> (bit_index << 1)) & 0x3;                \
+                        --n, ins >>= 2; \
+                        bit_index--; \
+                        if (bit_index < 0) { \
+                            bit_index = 3; \
+                            byte_index--; \
+                        } \
+                    } \
+                    if(k < s[x]) tmp_seq[x][k++] = c & 0xf;						\
+                } else { \
+                    tmp_seq[x][k++] = c & 0xf;						\
+                    byte_index = 1; bit_index = 0; \
+                    while(n > 0 && k < s[x]) { \
+                        ext_coor[x]++; \
+                        tmp_seq[x][k++] = (currseq->ins[ins][byte_index] >> (bit_index << 1)) & 0x3;                \
+                        --n; \
+                        bit_index++; \
+                        if (4 == bit_index) { \
+                            bit_index = 0; \
+                            byte_index++; \
+                        } \
+                    } \
                 } \
-            } \
-        }													\
+            }													\
+        } \
     }														\
     if (k != s[x]) ext_coor[x] = -10;						\
     if (1 == strand[x]) { \
@@ -363,7 +390,7 @@ generate_errors_flows(dwgsim_opt_t *opt, uint8_t **seq, uint8_t **mask, int32_t 
 void dwgsim_core(dwgsim_opt_t * opt)
 {
   seq_t seq;
-  mutseq_t rseq[2];
+  mutseq_t *mutseq[2]={NULL,NULL};
   uint64_t tot_len, ii=0, ctr=0;
   int i, l, n_ref, contig_i;
   char name[256], *qstr;
@@ -373,7 +400,6 @@ void dwgsim_core(dwgsim_opt_t * opt)
   uint8_t *tmp_seq_flow_mask[2]={NULL,NULL};
   int32_t tmp_seq_mem[2]={0,0};
   uint64_t n_sim = 0;
-  mut_t *target;
   error_t *e[2]={NULL,NULL};
   FILE *fp_muts_txt = NULL;
   FILE *fp_muts_bed = NULL;
@@ -480,7 +506,7 @@ void dwgsim_core(dwgsim_opt_t * opt)
               n_pairs = (uint64_t)((long double)l / tot_len * opt->N + 0.5);
           }
           else {
-              // based on coverage
+              // based on coverage, with added random reads
               n_pairs = (uint64_t)(l * opt->C / ((long double)(size[0] + size[1])) / (1.0 - opt->rand_read) + 0.5);
           }
       }
@@ -497,8 +523,9 @@ void dwgsim_core(dwgsim_opt_t * opt)
       prev_skip = 0;
 
       // generate mutations and print them out
-      mut_diref(opt, &seq, rseq, rseq+1, contig_i, muts_txt, muts_bed);
-      mut_print(name, &seq, rseq, rseq+1, opt->fp_mut);
+      mutseq[0] = mutseq_init(); mutseq[1] = mutseq_init();
+      mut_diref(opt, &seq, mutseq[0], mutseq[1], contig_i, muts_txt, muts_bed);
+      mut_print(name, &seq, mutseq[0], mutseq[1], opt->fp_mut);
 
       for (ii = 0; ii != n_pairs; ++ii, ++ctr) { // the core loop
           if(0 == (ctr % 10000)) {
@@ -575,7 +602,7 @@ void dwgsim_core(dwgsim_opt_t * opt)
               }
 
               // generate the read sequences
-              target = rseq[drand48()<0.5?0:1].s; // haplotype from which the reads are generated
+              mutseq_t *currseq = mutseq[drand48()<0.5?0:1]; // haplotype from which the reads are generated
               n_sub[0] = n_sub[1] = n_indel[0] = n_indel[1] = n_err[0] = n_err[1] = 0;
               n_sub_first[0] = n_sub_first[1] = n_indel_first[0] = n_indel_first[1] = n_err_first[0] = n_err_first[1] = 0;
               num_n[0]=num_n[1]=0;
@@ -812,7 +839,8 @@ void dwgsim_core(dwgsim_opt_t * opt)
               n_sim++;
           }
       }
-      free(rseq[0].s); free(rseq[1].s);
+      mutseq_destroy(mutseq[0]);
+      mutseq_destroy(mutseq[1]);
       fprintf(stderr, "\r[dwgsim_core] %llu",
               (unsigned long long int)ctr);
       contig_i++;

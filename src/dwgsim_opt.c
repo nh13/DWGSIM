@@ -78,6 +78,7 @@ void dwgsim_opt_destroy(dwgsim_opt_t *opt)
 
 int dwgsim_opt_usage(dwgsim_opt_t *opt)
 {
+  mutseq_init_bounds();
   fprintf(stderr, "\n");
   fprintf(stderr, "Program: dwgsim (short read simulator)\n");
   fprintf(stderr, "Version: %s\n", PACKAGE_VERSION);
@@ -118,7 +119,7 @@ int dwgsim_opt_usage(dwgsim_opt_t *opt)
   fprintf(stderr, "Note: For SOLiD mate pair reads and BFAST, the first read is F3 and the second is R3. For SOLiD mate pair reads\n");
   fprintf(stderr, "and BWA, the reads in the first file are R3 the reads annotated as the first read etc.\n");
   fprintf(stderr, "\n");
-  fprintf(stderr, "Note: The longest supported insertion is %d.\n", (int)ins_length_max);
+  fprintf(stderr, "Note: The longest supported insertion is %d.\n", 255);
   fprintf(stderr, "\n");
   return 1;
 }
@@ -148,9 +149,6 @@ dwgsim_opt_parse(dwgsim_opt_t *opt, int argc, char *argv[])
   int32_t i;
   int c;
   
-  // initialize mutation variables
-  mut_init();
-
   while ((c = getopt(argc, argv, "d:s:N:C:1:2:e:E:r:R:X:I:c:S:n:y:BHf:z:m:b:x:h")) >= 0) {
       switch (c) {
         case 'd': opt->dist = atoi(optarg); break;
@@ -201,7 +199,7 @@ dwgsim_opt_parse(dwgsim_opt_t *opt, int argc, char *argv[])
   }
   else {
       __check_option(opt->N, INT32_MIN, -1, "-N");
-      __check_option(opt->C, 1, INT32_MAX, "-C");
+      __check_option(opt->C, 0, INT32_MAX, "-C");
   }
   __check_option(opt->length[0], 1, INT32_MAX, "-1");
   __check_option(opt->length[1], 0, INT32_MAX, "-2");

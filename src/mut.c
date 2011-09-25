@@ -87,21 +87,25 @@ int seq_read_fasta(FILE *fp, seq_t *seq, char *locus, char *comment)
 } 
 
 mut_t mutmsk;
+mut_t mut_and_type_mask;
 mut_t muttype_shift;
 mut_t ins_length_shift;
 mut_t ins_length_mask;
 mut_t ins_length_max;
+mut_t ins_long_length_max;
 mut_t ins_mask;
 
-void mut_init()
+void
+mutseq_init_bounds()
 {
   int32_t i;
-
   mutmsk = (mut_t)0x30;
+  mut_and_type_mask = (mut_t)0x3F;
   muttype_shift = 6; // bits 5-6 store the mutation type
   ins_length_shift = 59; // bits 60-64 store the insertion length
   ins_length_mask = 0x1F; // bits 60-64 store the insertion length
   ins_length_max = ((ins_length_shift - muttype_shift) >> 1);
+  ins_long_length_max = UINT8_MAX;
   if(ins_length_mask < ins_length_max) { // we exceed storing the length of the indel
       ins_length_max = ins_length_mask;
   }
@@ -112,183 +116,195 @@ void mut_init()
   }
 }
 
-void mut_diref(dwgsim_opt_t *opt, const seq_t *seq, mutseq_t *hap1, mutseq_t *hap2, int32_t contig_i, muts_txt_t *muts_txt, muts_bed_t *muts_bed)
+mutseq_t *
+mutseq_init()
 {
-  int32_t i, j, deleting = 0, deletion_length = 0;
-  mutseq_t *ret[2];
+  mutseq_t *seq = NULL;
+  seq = calloc(1, sizeof(mutseq_t));
+  mutseq_init_bounds();
+  return seq;
+}
 
-  ret[0] = hap1; ret[1] = hap2;
-  ret[0]->l = seq->l; ret[1]->l = seq->l;
-  ret[0]->m = seq->m; ret[1]->m = seq->m;
-  ret[0]->s = (mut_t *)calloc(seq->m, sizeof(mut_t));
-  ret[1]->s = (mut_t *)calloc(seq->m, sizeof(mut_t));
+void
+mutseq_destroy(mutseq_t *seq)
+{
+  int32_t i;
+  for(i=0;i<seq->ins_l;i++) {
+      free(seq->ins[i]);
+  }
+  free(seq->ins);
+  free(seq->s);
+  free(seq);
+}
 
-  if(NULL == muts_bed && NULL == muts_txt) {
-      for (i = 0; i != seq->l; ++i) {
-          mut_t c;
-          c = ret[0]->s[i] = ret[1]->s[i] = (mut_t)nst_nt4_table[(int)seq->s[i]];
-          if (deleting) {
-              if (deletion_length < opt->indel_min || drand48() < opt->indel_extend) {
-                  if (deleting & 1) ret[0]->s[i] |= DELETE|c;
-                  if (deleting & 2) ret[1]->s[i] |= DELETE|c;
-                  deletion_length++;
-                  continue;
-              } else deleting = deletion_length = 0;
-          }
-          if (c < 4 && drand48() < opt->mut_rate) { // mutation
-              if (drand48() >= opt->indel_frac) { // substitution
-                  double r = drand48();
-                  c = (c + (mut_t)(r * 3.0 + 1)) & 3;
-                  if (opt->is_hap || drand48() < 0.333333) { // hom
-                      ret[0]->s[i] = ret[1]->s[i] = SUBSTITUTE|c;
-                  } else { // het
-                      ret[drand48()<0.5?0:1]->s[i] = SUBSTITUTE|c;
-                  }
-              } else { // indel
-                  if (drand48() < 0.5) { // deletion
-                      if (opt->is_hap || drand48() < 0.3333333) { // hom-del
-                          ret[0]->s[i] = ret[1]->s[i] = DELETE|c;
-                          deleting = 3;
-                      } else { // het-del
-                          deleting = drand48()<0.5?1:2;
-                          ret[deleting-1]->s[i] = DELETE|c;
-                      }
-                      deletion_length = 1;
-                  } else { // insertion
-                      mut_t num_ins = 0, ins = 0;
-                      do {
-                          num_ins++;
-                          ins = (ins << 2) | (mut_t)(drand48() * 4.0);
-                      } while (num_ins < ins_length_max && (num_ins < opt->indel_min || drand48() < opt->indel_extend));
-                      assert(0 < num_ins);
+mut_t
+mut_get_ins_length(mutseq_t *seq, int32_t i)
+{
+  mut_t m, n, index;
+  assert(0 <= i && i < seq->l);
+  m = seq->s[i];
+  assert(INSERT == (m & mutmsk));
+  n = (m >> ins_length_shift) & ins_length_mask;
+  if(0 == n) {
+      index = (m >> muttype_shift) & ins_mask;
+      assert(0 <= index && index < seq->ins_l);
+      return (mut_t)(seq->ins[index][0]);
+  }
+  else {
+      return n;
+  }
+}
 
-                      if (opt->is_hap || drand48() < 0.333333) { // hom-ins
-                          ret[0]->s[i] = ret[1]->s[i] = (num_ins << ins_length_shift) | (ins << muttype_shift) | INSERT | c;
-                      } else { // het-ins
-                          ret[drand48()<0.5?0:1]->s[i] = (num_ins << ins_length_shift) | (ins << muttype_shift) | INSERT | c;
-                      }
-                  }
-              }
-          }
+// returns 0 if it is a long insertion, 1 otherwise
+// if 0 is returned, the index into the long insertion list
+// is returned in "ins" and "n" is 0.
+int32_t
+mut_get_ins(mutseq_t *seq, int32_t i, mut_t *n, mut_t *ins)
+{
+  mut_t m;
+  assert(0 <= i && i < seq->l);
+  m = seq->s[i];
+  assert(INSERT == (m & mutmsk));
+  (*n) = (m >> ins_length_shift) & ins_length_mask;
+  (*ins) = (m >> muttype_shift) & ins_mask;
+  if(0 == (*n)) {
+      assert(0 <= (*ins) && (*ins) < seq->ins_l);
+      return 0;
+  }
+  else {
+      assert(0 < (*n));
+      assert((*n) <= ins_length_max);
+      return 1;
+  }
+}
+
+static inline void
+mut_print_ins(FILE *fp, mutseq_t *seq, int32_t i)
+{
+  mut_t n, ins;
+  if(1 == mut_get_ins(seq, i, &n, &ins)) {
+      while (n > 0) {
+          fputc("ACGTN"[ins & 0x3], fp);
+          ins >>= 2;
+          n--;
       }
   }
-  else if(NULL != muts_txt) {
-      // seed
-      for (i = 0; i != seq->l; ++i) {
-          ret[0]->s[i] = ret[1]->s[i] = (mut_t)nst_nt4_table[(int)seq->s[i]];
-      }
-      for (i =0; i < muts_txt->n; ++i) {
-          if (muts_txt->muts[i].contig == contig_i) {
-              int8_t type = muts_txt->muts[i].type;
-              uint32_t pos = muts_txt->muts[i].pos;
-              int8_t is_hap = muts_txt->muts[i].is_hap;
-              mut_t c = (mut_t)nst_nt4_table[(int)seq->s[pos-1]];
-
-              if (DELETE == type) {
-                  if (is_hap & 1) ret[0]->s[pos-1] |= DELETE|c;
-                  if (is_hap & 2) ret[1]->s[pos-1] |= DELETE|c;
-              }
-              else if (SUBSTITUTE == type) {
-                  if (is_hap & 1) ret[0]->s[pos-1] = SUBSTITUTE|nst_nt4_table[(int)muts_txt->muts[i].bases[0]];
-                  if (is_hap & 2) ret[1]->s[pos-1] = SUBSTITUTE|nst_nt4_table[(int)muts_txt->muts[i].bases[0]];
-              }
-              else if (INSERT == type) {
-                  mut_t num_ins = 0, ins = 0;
-                  for (j = strlen(muts_txt->muts[i].bases)-1; 0 <= j; --j) {
-                      if(ins_length_max <= num_ins) break;
-                      num_ins++;
-                      ins = (ins << 2) | nst_nt4_table[(int)muts_txt->muts[i].bases[j]];
-                  } 
-                  assert(0 < num_ins);
-
-                  if (is_hap & 1) ret[0]->s[pos-1] = (num_ins << ins_length_shift) | (ins << muttype_shift) | INSERT | c;
-                  if (is_hap & 2) ret[1]->s[pos-1] = (num_ins << ins_length_shift) | (ins << muttype_shift) | INSERT | c;
-              }
+  else { // long insertion
+      int32_t byte_index, bit_index;
+      assert(NULL != seq->ins[ins]);
+      n = seq->ins[ins][0]; // long insertion length
+      // reverse order
+      byte_index = mut_get_ins_bytes(n) - 1;
+      bit_index = n & 3; // % 4
+      while(0 < n) {
+          fputc("ACGTN"[(seq->ins[ins][byte_index] >> (bit_index >> 1)) & 0x3], fp);
+          bit_index--;
+          if(bit_index < 0) {
+              bit_index = 3;
+              byte_index--;
           }
+          n--;
       }
   }
-  else { // BED
-      // seed
-      for (i = 0; i != seq->l; ++i) {
-          ret[0]->s[i] = ret[1]->s[i] = (mut_t)nst_nt4_table[(int)seq->s[i]];
+}
+
+// bases is NULL if we are to randomly simulate the bases
+void mut_add_ins(dwgsim_opt_t *opt, mutseq_t *hap1, mutseq_t *hap2, int32_t i, int32_t c, int8_t hap, char *bases, mut_t num_ins)
+{
+  mut_t ins = 0, j;
+
+  if (NULL == bases) {
+      if(num_ins == 0) {
+          // get the new insertion length
+          do {
+              num_ins++;
+          } while (num_ins < ins_long_length_max && (num_ins < opt->indel_min || drand48() < opt->indel_extend));
       }
-      // mutates exactly based on a BED file
-      for (i = 0; i < muts_bed->n; ++i) {
-          if (muts_bed->muts[i].contig == contig_i) {
-              int32_t has_bases = 1, is_hom = 0;
-              int32_t which_hap = 0;
-              mut_t c;
+  } else {
+      num_ins = strlen(bases); // ignores num_ins
+  }
+  if (ins_long_length_max < num_ins) num_ins = ins_long_length_max;
 
-              // does this mutation have random bases?
-              if (0 == strcmp("*", muts_bed->muts[i].bases)) has_bases = 0; // random bases
-
-              // het or hom?
-              if (opt->is_hap || drand48() < 0.333333) {
-                  is_hom = 1; // hom
-              }
-              else {
-                  which_hap = drand48()<0.5?0:1;
-              }
-
-              // mutate
-              if (SUBSTITUTE == muts_bed->muts[i].type) {
-                  for (j = muts_bed->muts[i].start; j < muts_bed->muts[i].end; ++j) { // for each base
-                      c = (mut_t)nst_nt4_table[(int)seq->s[j]];
-                      if (0 == has_bases) { // random DNA base
-                          double r = drand48();
-                          c = (c + (mut_t)(r * 3.0 + 1)) & 3;
-                      }
-                      else {
-                          c = (mut_t)nst_nt4_table[(int)muts_bed->muts[i].bases[j - muts_bed->muts[i].start]]; 
-                      }
-                      if (1 == is_hom) {
-                          ret[0]->s[j] = ret[1]->s[j] = SUBSTITUTE|c;
-                      } else { // het
-                          ret[which_hap]->s[j] = SUBSTITUTE|c;
-                      }
-                  }
-              }
-              else if (DELETE == muts_bed->muts[i].type) {
-                  for (j = muts_bed->muts[i].start; j < muts_bed->muts[i].end; ++j) { // for each base
-                      c = (mut_t)nst_nt4_table[(int)seq->s[j]];
-                      if (1 == is_hom) {
-                          ret[0]->s[j] = ret[1]->s[j] = DELETE|c;
-                      } else { // het-del
-                          ret[which_hap]->s[j] = DELETE|c;
-                      }
-                  }
-              }
-              else if (INSERT == muts_bed->muts[i].type) {
-                  mut_t num_ins = 0, ins = 0;
-
-                  c = (mut_t)nst_nt4_table[(int)seq->s[muts_bed->muts[i].start]];
-                  for (j = muts_bed->muts[i].end-1;
-                       muts_bed->muts[i].start <= j && num_ins < ins_length_max; 
-                       --j) { // for each base
-                      num_ins++;
-                      if(0 == has_bases) {
-                          ins = (ins << 2) | (mut_t)(drand48() * 4.0);
-                      }
-                      else {
-                          ins = (ins << 2) | (mut_t)(nst_nt4_table[(int)muts_bed->muts[i].bases[j - muts_bed->muts[i].start]]);
-                      }
-                  } while (num_ins < ins_length_max && (1 == has_bases || drand48() < opt->indel_extend));
-                  assert(0 < num_ins);
-
-                  j = muts_bed->muts[i].start;
-                  if (1 == is_hom) {
-                      ret[0]->s[j] = ret[1]->s[j] = (num_ins << ins_length_shift) | (ins << muttype_shift) | INSERT | c;
-                  } else { // het-ins
-                      ret[which_hap]->s[j] = (num_ins << ins_length_shift) | (ins << muttype_shift) | INSERT | c;
-                  }
-              }
-          }
-          else if (contig_i < muts_bed->muts[i].contig) {
-              break;
-          }
+  if (hap < 0) {
+      // set ploidy
+      if (opt->is_hap || drand48() < 0.333333) { // hom-ins
+          hap = 3;
+      } else if (drand48() < 0.5) {
+          hap = 1;
+      } else {
+          hap = 2;
       }
   }
-  
+
+  if (num_ins <= ins_length_max) { // short
+      // generate the insertion
+      if (NULL == bases) {
+          for (j=0;j<num_ins;j++) {
+              ins = (ins << 2) | (mut_t)(drand48() * 4.0);
+          }
+      } else {
+          for (j = num_ins; 0 <= j; --j) {
+              ins = (ins << 2) | nst_nt4_table[(int)bases[j]];
+          } 
+      }
+      // store
+      if (hap & 0x1) hap1->s[i] = (num_ins << ins_length_shift) | (ins << muttype_shift) | INSERT | c;
+      if (hap & 0x2) hap2->s[i] = (num_ins << ins_length_shift) | (ins << muttype_shift) | INSERT | c;
+  } else { // long
+      int32_t byte_index, bit_index;
+      int32_t hap1_byte_l=0, hap2_byte_l=0; // HER
+      if (hap & 0x1) {
+          while (hap1->ins_m <= hap1->ins_l) { // realloc
+              hap1->ins_m = (hap1->ins_m < 16) ? 16 : (hap1->ins_m << 1); 
+              hap1->ins = realloc(hap1->ins, sizeof(uint8_t*) * hap1->ins_m);
+          }
+          hap1_byte_l = mut_get_ins_bytes(num_ins);
+          hap1->ins[hap1->ins_l] = calloc(mut_get_ins_bytes(num_ins), sizeof(uint8_t));
+          hap1->ins[hap1->ins_l][0] = num_ins;
+      }
+      if (hap & 0x2) {
+          while (hap2->ins_m <= hap2->ins_l) { // realloc
+              hap2->ins_m = (hap2->ins_m < 16) ? 16 : (hap2->ins_m << 1); 
+              hap2->ins = realloc(hap2->ins, sizeof(uint8_t*) * hap2->ins_m);
+          }
+          hap2_byte_l = mut_get_ins_bytes(num_ins);
+          hap2->ins[hap2->ins_l] = calloc(mut_get_ins_bytes(num_ins), sizeof(uint8_t));
+          hap2->ins[hap2->ins_l][0] = num_ins;
+      }
+      byte_index = 1;
+      bit_index = 0;
+      while(0 < num_ins) {
+          uint8_t b;
+          if (NULL == bases) {
+              b = ((uint8_t)(drand48() * 4.0)) << (bit_index << 1);
+          } else {
+              b = nst_nt4_table[(int)bases[num_ins-1]] << (bit_index << 1);
+          }
+          if (hap & 0x1) hap1->ins[hap1->ins_l][byte_index] |= b;
+          if (hap & 0x2) hap2->ins[hap2->ins_l][byte_index] |= b;
+          bit_index++;
+          if(4 == bit_index) {
+              bit_index=0;
+              byte_index++;
+          }
+          num_ins--;
+      }
+      if (hap & 0x1) {
+          assert(hap1->ins_l <= ins_mask);
+          hap1->s[i] = (hap1->ins_l << muttype_shift) | INSERT | c;
+          hap1->ins_l++;
+      }
+      if (hap & 0x2) {
+          assert(hap2->ins_l <= ins_mask);
+          hap2->s[i] = (hap2->ins_l << muttype_shift) | INSERT | c;
+          hap2->ins_l++;
+      }
+  }
+}
+
+void mut_debug(const seq_t *seq, mutseq_t *hap1, mutseq_t *hap2)
+{
+  int32_t i;
   // DEBUG
   for (i = 0; i != seq->l; ++i) {
       mut_t c[3];
@@ -296,15 +312,18 @@ void mut_diref(dwgsim_opt_t *opt, const seq_t *seq, mutseq_t *hap1, mutseq_t *ha
       c[1] = hap1->s[i]; c[2] = hap2->s[i];
       if (c[0] >= 4) continue;
       if ((c[1] & mutmsk) != NOCHANGE || (c[2] & mutmsk) != NOCHANGE) {
-          if (c[1] == c[2]) { // hom
+          if ((c[1] & mut_and_type_mask) == (c[2] & mut_and_type_mask)) { // hom
               if ((c[1]&mutmsk) == SUBSTITUTE) { // substitution
                   continue;
               } else if ((c[1]&mutmsk) == DELETE) { // del
                   continue;
               } else if ((c[1] & mutmsk) == INSERT) { // ins
-                  mut_t n = (c[1] >> ins_length_shift) & ins_length_mask;
-                  assert(n > 0);
-              }  else assert(0);
+                  mut_t n1 = mut_get_ins_length(hap1, i);
+                  mut_t n2 = mut_get_ins_length(hap1, i);
+                  assert(n1 > 0);
+                  assert(n1 <= ins_long_length_max);
+                  assert(n1 == n2);
+              } else assert(0);
           } else { // het
               if ((c[1]&mutmsk) == SUBSTITUTE || (c[2]&mutmsk) == SUBSTITUTE) { // substitution
                   continue;
@@ -313,16 +332,68 @@ void mut_diref(dwgsim_opt_t *opt, const seq_t *seq, mutseq_t *hap1, mutseq_t *ha
               } else if ((c[2]&mutmsk) == DELETE) {
                   continue;
               } else if ((c[1]&mutmsk) == INSERT) { // ins 1
-                  mut_t n = (c[1] >> ins_length_shift) & ins_length_mask;
+                  mut_t n = mut_get_ins_length(hap1, i);
                   assert(n > 0);
+                  assert(n <= ins_long_length_max);
               } else if ((c[2]&mutmsk) == INSERT) { // ins 2
-                  mut_t n = (c[2] >> ins_length_shift) & ins_length_mask;
+                  mut_t n = mut_get_ins_length(hap2, i);
                   assert(n > 0);
+                  assert(n <= ins_long_length_max);
               } else assert(0);
           }
       }
   }
-  // left-justify all the insertions and deletions
+}
+
+static void
+mut_left_justify_ins(mutseq_t *hap1, int32_t i)
+{
+  // NB: should we also be checking both haps for homozygous cases
+  mut_t n, ins, j;
+  if(1 == mut_get_ins(hap1, i, &n, &ins)) { // short
+      assert(n > 0);
+      j=i;
+      while(0 < j
+            && INSERT != (hap1->s[j-1]&mutmsk) // no insertion
+            && DELETE != (hap1->s[j-1]&mutmsk) // no deletion 
+            && ((ins >> ((n-1) << 1)) & 3) == (hap1->s[j-1]&3)) { // end of insertion matches previous base
+          // update ins
+          ins = (ins & ~((mut_t)3 << ((n-1) << 1))); // zero out the last base
+          ins <<= 2; // shift over
+          ins |= (hap1->s[j-1]&3); // insert the first base
+          hap1->s[j] = (hap1->s[j]&3); // make it NOCHANGE
+          j--;
+      }
+      hap1->s[j] = (n << ins_length_shift) | (ins << muttype_shift) | INSERT | (hap1->s[j]&3); // re-insert
+  } else { // long
+      int32_t byte_index;
+      n = hap1->ins[ins][0]; // get the long insertion length
+      assert(n > 0);
+      j=i;
+      while(0 < j
+            && INSERT != (hap1->s[j-1]&mutmsk) // no insertion
+            && DELETE != (hap1->s[j-1]&mutmsk) // no deletion 
+            && ((hap1->ins[ins][1] >> 6) & 3) == (hap1->s[j-1]&3)) { // end of insertion matches previous base
+          // update ins
+          for (byte_index = 1; byte_index < mut_get_ins_bytes(n); byte_index++) {
+              hap1->ins[ins][byte_index] <<= 2; // shift over
+              if (byte_index+1 < mut_get_ins_bytes(n)) { // copy over from next byte 
+                  hap1->ins[ins][byte_index] |= (hap1->ins[ins][byte_index+1] >> 6) & 3; 
+              }
+          }
+          hap1->ins[ins][mut_get_ins_bytes(n)-1] |= (hap1->s[j]&3) << ((n & 3) << 1); // insert first base
+          hap1->s[j] = (hap1->s[j]&3); // make it NOCHANGE
+          j--;
+      }
+      hap1->s[j] = (ins << muttype_shift) | INSERT | (hap1->s[j]&3); // re-insert
+  }
+}
+
+// left-justify all the insertions and deletions
+static void
+mut_left_justify(const seq_t *seq, mutseq_t *hap1, mutseq_t *hap2)
+{
+  mut_t i, j;
   int del_length;
   int prev_del[2] = {0, 0};
   for (i = 0; i != seq->l; ++i) {
@@ -331,7 +402,7 @@ void mut_diref(dwgsim_opt_t *opt, const seq_t *seq, mutseq_t *hap1, mutseq_t *ha
       c[1] = hap1->s[i]; c[2] = hap2->s[i];
       if (c[0] >= 4) continue;
       if ((c[1] & mutmsk) != NOCHANGE || (c[2] & mutmsk) != NOCHANGE) {
-          if (c[1] == c[2]) { // hom
+          if ((c[1] & mut_and_type_mask) == (c[2] & mut_and_type_mask)) { // hom
               // TODO: code re-use
               if ((c[1]&mutmsk) == SUBSTITUTE) { // substitution
                   prev_del[0] = prev_del[1] = 0;
@@ -360,21 +431,8 @@ void mut_diref(dwgsim_opt_t *opt, const seq_t *seq, mutseq_t *hap1, mutseq_t *ha
                   }
               } else if ((c[1] & mutmsk) == INSERT) { // ins
                   prev_del[0] = prev_del[1] = 0;
-                  mut_t n = (c[1] >> ins_length_shift) & ins_length_mask, ins = (c[1] >> muttype_shift) & ins_mask;
-                  assert(n > 0);
-                  j=i;
-                  while(0 < j
-                        && INSERT != (hap1->s[j-1]&mutmsk) && INSERT != (hap2->s[j-1]&mutmsk) // no insertion
-                        && DELETE != (hap1->s[j-1]&mutmsk) && DELETE != (hap2->s[j-1]&mutmsk) // no deletion 
-                        && ((ins >> ((n-1) << 1)) & 3) == (hap1->s[j-1]&3)) { // end of insertion matches previous base
-                      // update ins
-                      ins = (ins | (3 << ((n-1) << 1))) ^ ((n-1) << 1); // zero out last base
-                      ins <<= 2; // make room for the first base
-                      ins |= (hap1->s[j-1]&3); // insert the first base
-                      hap1->s[j] = hap2->s[j] = (hap1->s[j]&3); // make it NOCHANGE
-                      j--;
-                  }
-                  hap1->s[j] = hap2->s[j] = (n << ins_length_shift) | (ins << muttype_shift) | INSERT | (hap1->s[j]&3); // re-insert
+                  mut_left_justify_ins(hap1, i);
+                  mut_left_justify_ins(hap2, i);
               }  else assert(0);
           } else { // het
               if ((c[1]&mutmsk) == SUBSTITUTE || (c[2]&mutmsk) == SUBSTITUTE) { // substitution
@@ -422,38 +480,10 @@ void mut_diref(dwgsim_opt_t *opt, const seq_t *seq, mutseq_t *hap1, mutseq_t *ha
                   }
               } else if ((c[1]&mutmsk) == INSERT) { // ins 1
                   prev_del[0] = prev_del[1] = 0;
-                  mut_t n = (c[1] >> ins_length_shift) & ins_length_mask, ins = (c[1] >> muttype_shift) & ins_mask;
-                  assert(n > 0);
-                  j=i;
-                  while(0 < j
-                        && INSERT != (hap1->s[j-1]&mutmsk) // no insertion
-                        && DELETE != (hap1->s[j-1]&mutmsk) // no deletion 
-                        && ((ins >> ((n-1) << 1)) & 3) == (hap1->s[j-1]&3)) { // end of insertion matches previous base
-                      // update ins
-                      ins = (ins | (3 << ((n-1) << 1))) ^ ((n-1) << 1); // zero out last base
-                      ins <<= 2;
-                      ins |= (hap1->s[j-1]&3); // insert the first base
-                      hap1->s[j] = (hap1->s[j]&3); // make it NOCHANGE
-                      j--;
-                  }
-                  hap1->s[j] = (n << ins_length_shift) | (ins << muttype_shift) | INSERT | (hap1->s[j]&3); // re-insert
+                  mut_left_justify_ins(hap1, i);
               } else if ((c[2]&mutmsk) == INSERT) { // ins 2
                   prev_del[0] = prev_del[1] = 0;
-                  mut_t n = (c[2] >> ins_length_shift) & ins_length_mask, ins = (c[2] >> muttype_shift) & ins_mask;
-                  assert(n > 0);
-                  j=i;
-                  while(0 < j
-                        && INSERT != (hap2->s[j-1]&mutmsk) // no insertion
-                        && DELETE != (hap2->s[j-1]&mutmsk) // no deletion 
-                        && ((ins >> ((n-1) << 1)) & 3) == (hap2->s[j-1]&3)) { // end of insertion matches previous base
-                      // update ins
-                      ins = (ins | (3 << ((n-1) << 1))) ^ ((n-1) << 1); // zero out last base
-                      ins <<= 2;
-                      ins |= (hap2->s[j-1]&3); // insert the first base
-                      hap2->s[j] = (hap2->s[j]&3); // make it NOCHANGE
-                      j--;
-                  }
-                  hap2->s[j] = (n << ins_length_shift) | (ins << muttype_shift) | INSERT | (hap2->s[j]&3); // re-insert
+                  mut_left_justify_ins(hap2, i);
               } else assert(0);
           }
       }
@@ -463,9 +493,165 @@ void mut_diref(dwgsim_opt_t *opt, const seq_t *seq, mutseq_t *hap1, mutseq_t *ha
   }
 }
 
+void mut_diref(dwgsim_opt_t *opt, const seq_t *seq, mutseq_t *hap1, mutseq_t *hap2, 
+               int32_t contig_i, muts_txt_t *muts_txt, muts_bed_t *muts_bed)
+{
+  int32_t i, j, deleting = 0, deletion_length = 0;
+  mutseq_t *ret[2];
+
+  ret[0] = hap1; ret[1] = hap2;
+  ret[0]->l = seq->l; ret[1]->l = seq->l;
+  ret[0]->m = seq->m; ret[1]->m = seq->m;
+  ret[0]->s = (mut_t *)calloc(seq->m, sizeof(mut_t));
+  ret[1]->s = (mut_t *)calloc(seq->m, sizeof(mut_t));
+  ret[0]->ins = NULL; ret[1]->ins = NULL;
+  ret[0]->ins_l = 0; ret[1]->ins_l = 0;
+  ret[0]->ins_m = 0; ret[1]->ins_m = 0;
+
+  if(NULL == muts_bed && NULL == muts_txt) {
+      for (i = 0; i != seq->l; ++i) {
+          mut_t c;
+          c = ret[0]->s[i] = ret[1]->s[i] = (mut_t)nst_nt4_table[(int)seq->s[i]];
+          if (deleting) {
+              if (deletion_length < opt->indel_min || drand48() < opt->indel_extend) {
+                  if (deleting & 1) ret[0]->s[i] |= DELETE|c;
+                  if (deleting & 2) ret[1]->s[i] |= DELETE|c;
+                  deletion_length++;
+                  continue;
+              } else deleting = deletion_length = 0;
+          }
+          if (c < 4 && drand48() < opt->mut_rate) { // mutation
+              if (drand48() >= opt->indel_frac) { // substitution
+                  double r = drand48();
+                  c = (c + (mut_t)(r * 3.0 + 1)) & 3;
+                  if (opt->is_hap || drand48() < 0.333333) { // hom
+                      ret[0]->s[i] = ret[1]->s[i] = SUBSTITUTE|c;
+                  } else { // het
+                      ret[drand48()<0.5?0:1]->s[i] = SUBSTITUTE|c;
+                  }
+              } else { // indel
+                  if (drand48() < 0.5) { // deletion
+                      if (opt->is_hap || drand48() < 0.3333333) { // hom-del
+                          ret[0]->s[i] = ret[1]->s[i] = DELETE|c;
+                          deleting = 3;
+                      } else { // het-del
+                          deleting = drand48()<0.5?1:2;
+                          ret[deleting-1]->s[i] = DELETE|c;
+                      }
+                      deletion_length = 1;
+                  } else { // insertion
+                      mut_add_ins(opt, ret[0], ret[1], i, c, -1, NULL, 0);
+                  }
+              }
+          }
+      }
+  }
+  else if(NULL != muts_txt) {
+      // seed
+      for (i = 0; i != seq->l; ++i) {
+          ret[0]->s[i] = ret[1]->s[i] = (mut_t)nst_nt4_table[(int)seq->s[i]];
+      }
+      for (i =0; i < muts_txt->n; ++i) {
+          if (muts_txt->muts[i].contig == contig_i) {
+              int8_t type = muts_txt->muts[i].type;
+              uint32_t pos = muts_txt->muts[i].pos;
+              int8_t is_hap = muts_txt->muts[i].is_hap;
+              mut_t c = (mut_t)nst_nt4_table[(int)seq->s[pos-1]];
+
+              if (DELETE == type) {
+                  if (is_hap & 1) ret[0]->s[pos-1] |= DELETE|c;
+                  if (is_hap & 2) ret[1]->s[pos-1] |= DELETE|c;
+              }
+              else if (SUBSTITUTE == type) {
+                  if (is_hap & 1) ret[0]->s[pos-1] = SUBSTITUTE|nst_nt4_table[(int)muts_txt->muts[i].bases[0]];
+                  if (is_hap & 2) ret[1]->s[pos-1] = SUBSTITUTE|nst_nt4_table[(int)muts_txt->muts[i].bases[0]];
+              }
+              else if (INSERT == type) {
+                  mut_add_ins(opt, ret[0], ret[1], i, c, is_hap, muts_txt->muts[i].bases, 0);
+              }
+          }
+      }
+  }
+  else { // BED
+      // seed
+      for (i = 0; i != seq->l; ++i) {
+          ret[0]->s[i] = ret[1]->s[i] = (mut_t)nst_nt4_table[(int)seq->s[i]];
+      }
+      // mutates exactly based on a BED file
+      for (i = 0; i < muts_bed->n; ++i) {
+          if (muts_bed->muts[i].contig == contig_i) {
+              int32_t has_bases = 1, is_hom = 0, hap = 0;
+              int32_t which_hap = 0;
+              mut_t c;
+
+              // does this mutation have random bases?
+              if (0 == strcmp("*", muts_bed->muts[i].bases)) has_bases = 0; // random bases
+
+              // het or hom?
+              if (opt->is_hap || drand48() < 0.333333) {
+                  is_hom = 1; // hom
+                  hap = 3;
+              }
+              else {
+                  which_hap = drand48()<0.5?0:1;
+                  hap = 1 << which_hap;
+              }
+
+              // mutate
+              if (SUBSTITUTE == muts_bed->muts[i].type) {
+                  for (j = muts_bed->muts[i].start; j < muts_bed->muts[i].end; ++j) { // for each base
+                      c = (mut_t)nst_nt4_table[(int)seq->s[j]];
+                      if (0 == has_bases) { // random DNA base
+                          double r = drand48();
+                          c = (c + (mut_t)(r * 3.0 + 1)) & 3;
+                      }
+                      else {
+                          c = (mut_t)nst_nt4_table[(int)muts_bed->muts[i].bases[j - muts_bed->muts[i].start]]; 
+                      }
+                      if (1 == is_hom) {
+                          ret[0]->s[j] = ret[1]->s[j] = SUBSTITUTE|c;
+                      } else { // het
+                          ret[which_hap]->s[j] = SUBSTITUTE|c;
+                      }
+                  }
+              }
+              else if (DELETE == muts_bed->muts[i].type) {
+                  for (j = muts_bed->muts[i].start; j < muts_bed->muts[i].end; ++j) { // for each base
+                      c = (mut_t)nst_nt4_table[(int)seq->s[j]];
+                      if (1 == is_hom) {
+                          ret[0]->s[j] = ret[1]->s[j] = DELETE|c;
+                      } else { // het-del
+                          ret[which_hap]->s[j] = DELETE|c;
+                      }
+                  }
+              }
+              else if (INSERT == muts_bed->muts[i].type) {
+                  c = (mut_t)nst_nt4_table[(int)seq->s[muts_bed->muts[i].start]];
+                  if (0 == has_bases) {
+                      mut_add_ins(opt, ret[0], ret[1], muts_bed->muts[i].start, c, hap, NULL, muts_bed->muts[i].end - muts_bed->muts[i].start);
+                  } else {
+                      mut_add_ins(opt, ret[0], ret[1], muts_bed->muts[i].start, c, hap, muts_bed->muts[i].bases, 0);
+                  }
+              }
+          }
+          else if (contig_i < muts_bed->muts[i].contig) {
+              break;
+          }
+      }
+  }
+
+  // DEBUG
+  mut_debug(seq, hap1, hap2);
+  
+  // DEBUG
+  mut_left_justify(seq, hap1, hap2);
+  mut_debug(seq, hap1, hap2);
+}
+
 void mut_print(const char *name, const seq_t *seq, mutseq_t *hap1, mutseq_t *hap2, FILE *fpout)
 {
   int32_t i, hap;
+  
   for (i = 0; i != seq->l; ++i) {
       mut_t c[3];
       c[0] = nst_nt4_table[(int)seq->s[i]];
@@ -473,20 +659,14 @@ void mut_print(const char *name, const seq_t *seq, mutseq_t *hap1, mutseq_t *hap
       if (c[0] >= 4) continue;
       if ((c[1] & mutmsk) != NOCHANGE || (c[2] & mutmsk) != NOCHANGE) {
           fprintf(fpout, "%s\t%d\t", name, i+1);
-          if (c[1] == c[2]) { // hom
+          if ((c[1] & mut_and_type_mask) == (c[2] & mut_and_type_mask)) { // hom
               if ((c[1]&mutmsk) == SUBSTITUTE) { // substitution
                   fprintf(fpout, "%c\t%c\t3\n", "ACGTN"[c[0]], "ACGTN"[c[1]&0xf]);
               } else if ((c[1]&mutmsk) == DELETE) { // del
                   fprintf(fpout, "%c\t-\t3\n", "ACGTN"[c[0]]);
               } else if ((c[1] & mutmsk) == INSERT) { // ins
                   fprintf(fpout, "-\t");
-                  mut_t n = (c[1] >> ins_length_shift) & ins_length_mask, ins = (c[1] >> muttype_shift) & ins_mask;
-                  assert(n > 0);
-                  while(n > 0) {
-                      fputc("ACGTN"[ins & 0x3], fpout);
-                      ins >>= 2;
-                      n--;
-                  }
+                  mut_print_ins(fpout, hap1, i);
                   fprintf(fpout, "\t3\n");
               }  else assert(0);
           } else { // het
@@ -499,23 +679,11 @@ void mut_print(const char *name, const seq_t *seq, mutseq_t *hap1, mutseq_t *hap
                   fprintf(fpout, "%c\t-\t2\n", "ACGTN"[c[0]]);
               } else if ((c[1]&mutmsk) == INSERT) { // ins 1
                   fprintf(fpout, "-\t");
-                  mut_t n = (c[1] >> ins_length_shift) & ins_length_mask, ins = (c[1] >> muttype_shift) & ins_mask;
-                  assert(n > 0);
-                  while (n > 0) {
-                      fputc("ACGTN"[ins & 0x3], fpout);
-                      ins >>= 2;
-                      n--;
-                  }
+                  mut_print_ins(fpout, hap1, i);
                   fprintf(fpout, "\t1\n");
               } else if ((c[2]&mutmsk) == INSERT) { // ins 2
                   fprintf(fpout, "-\t");
-                  mut_t n = (c[2] >> ins_length_shift) & ins_length_mask, ins = (c[2] >> muttype_shift) & ins_mask;
-                  assert(n > 0);
-                  while (n > 0) {
-                      fputc("ACGTN"[ins & 0x3], fpout);
-                      ins >>= 2;
-                      n--;
-                  }
+                  mut_print_ins(fpout, hap2, i);
                   fprintf(fpout, "\t2\n");
               } else assert(0);
           }
