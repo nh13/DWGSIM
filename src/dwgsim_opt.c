@@ -204,14 +204,20 @@ dwgsim_opt_parse(dwgsim_opt_t *opt, int argc, char *argv[])
   __check_option(opt->length[0], 1, INT32_MAX, "-1");
   __check_option(opt->length[1], 0, INT32_MAX, "-2");
   // error rate
-  if(IONTORRENT == opt->data_type) {
-      if(opt->e[0].end != opt->e[0].start) {
-          fprintf(stderr, "End one: a uniform error rate must be given for Ion Torrent data");
-          return 1;
+  for(i=0;i<2;i++) {
+      if(opt->e[i].start < 0.0 || 1.0 < opt->e[i].start) {
+          fprintf(stderr, "End %s: the start error is out of range (-e)\n", (0 == i) ? "one" : "two");
+          return 0;
       }
-      if(opt->e[1].end != opt->e[1].start) {
-          fprintf(stderr, "End two: a uniform error rate must be given for Ion Torrent data");
-          return 1;
+      if(opt->e[i].end < 0.0 || 1.0 < opt->e[i].end) {
+          fprintf(stderr, "End %s: the end error is out of range (-e)\n", (0 == i) ? "one" : "two");
+          return 0;
+      }
+      if(IONTORRENT == opt->data_type) {
+          if(opt->e[i].end != opt->e[i].start) {
+              fprintf(stderr, "End %s: a uniform error rate must be given for Ion Torrent data\n", (0 == i) ? "one" : "two");
+              return 0;
+          }
       }
   }
   __check_option(opt->mut_rate, 0, 1.0, "-r");
@@ -224,14 +230,14 @@ dwgsim_opt_parse(dwgsim_opt_t *opt, int argc, char *argv[])
   __check_option(opt->rand_read, 0, 1.0, "-y");
   if(IONTORRENT == opt->data_type && NULL == opt->flow_order) {
       fprintf(stderr, "Error: command line option -f is required\n");
-      return 1;
+      return 0;
   }
   __check_option(opt->use_base_error, 0, 1, "-B");
   __check_option(opt->is_hap, 0, 1, "-H");
   
   if(NULL != opt->fn_muts_txt && NULL != opt->fn_muts_bed) {
       fprintf(stderr, "Error: -m and -b cannot be used together\n");
-      return 1;
+      return 0;
   }
   
   // random seed
@@ -241,7 +247,7 @@ dwgsim_opt_parse(dwgsim_opt_t *opt, int argc, char *argv[])
       // uniform error rates only (so far)
       if(opt->e[0].start != opt->e[0].end || opt->e[1].start != opt->e[1].end) {
           fprintf(stderr, "Error: non-uniform error rate not support for Ion Torrent data\n");
-          return 1;
+          return 0;
       }
       // update flow order
       opt->flow_order_len = strlen((char*)opt->flow_order);
