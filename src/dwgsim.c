@@ -399,7 +399,7 @@ void dwgsim_core(dwgsim_opt_t * opt)
   uint8_t *tmp_seq[2]={NULL,NULL};
   uint8_t *tmp_seq_flow_mask[2]={NULL,NULL};
   int32_t tmp_seq_mem[2]={0,0};
-  uint64_t n_sim = 0;
+  int64_t n_sim = 0;
   error_t *e[2]={NULL,NULL};
   FILE *fp_muts_txt = NULL;
   FILE *fp_muts_bed = NULL;
@@ -485,7 +485,7 @@ void dwgsim_core(dwgsim_opt_t * opt)
   fprintf(stderr, "[dwgsim_core] Currently on: \n0");
   contig_i = 0;
   while ((l = seq_read_fasta(opt->fp_fa, &seq, name, 0)) >= 0) {
-      uint64_t n_pairs;
+      int64_t n_pairs;
       n_ref--;
 
       if(0 == n_ref && opt->C < 0) {
@@ -504,6 +504,7 @@ void dwgsim_core(dwgsim_opt_t * opt)
           if(0 < opt->N) {
               // based on -N
               n_pairs = (uint64_t)((long double)l / tot_len * opt->N + 0.5);
+              if(opt->N - n_sim < n_pairs) n_pairs = opt->N - n_sim; // make sure we don't simulate too many reads
           }
           else {
               // based on coverage, with added random reads
@@ -518,6 +519,10 @@ void dwgsim_core(dwgsim_opt_t * opt)
           prev_skip = 1;
           fprintf(stderr, "[dwgsim_core] skip sequence '%s' as it is shorter than %f!\n", name, opt->dist + 3 * opt->std_dev);
           contig_i++;
+          continue;
+      }
+      else if (n_pairs < 0) { // NB: this should not happen
+          // not enough pairs
           continue;
       }
       prev_skip = 0;
