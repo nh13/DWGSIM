@@ -541,32 +541,11 @@ void dwgsim_core(dwgsim_opt_t * opt)
           int d, pos, s[2], strand[2];
           int n_sub[2], n_indel[2], n_err[2], ext_coor[2]={0,0}, j, k;
           int n_sub_first[2], n_indel_first[2], n_err_first[2]; // need this for SOLID data
-          int c1, c2, c, flip_reads;
+          int c1, c2, c;
               
           s[0] = size[0]; s[1] = size[1];
 
           if(opt->rand_read < drand48()) { 
-
-              // strand
-              if(2 == opt->strandedness || (0 == opt->strandedness && ILLUMINA == opt->data_type)) {
-                  // opposite strand by default for Illumina
-                  strand[0] = 0; strand[1] = 1; 
-                  flip_reads = 0;
-              }
-              else if(1 == opt->strandedness || (0 == opt->strandedness && (SOLID == opt->data_type || IONTORRENT == opt->data_type))) {
-                  // same strands by default for SOLiD
-                  strand[0] = 0; strand[1] = 0; 
-                  flip_reads = 1;
-              }
-              else {
-                  // should not reach here
-                  assert(1 == 0);
-              }
-              if (drand48() < 0.5) { // which strand ?
-                  // Flip strands 
-                  strand[0] = (1 + strand[0]) % 2;
-                  strand[1] = (1 + strand[1]) % 2;
-              }
 
               if(NULL == regions_bed) {
                   do { // avoid boundary failure
@@ -613,32 +592,71 @@ void dwgsim_core(dwgsim_opt_t * opt)
               n_sub[0] = n_sub[1] = n_indel[0] = n_indel[1] = n_err[0] = n_err[1] = 0;
               n_sub_first[0] = n_sub_first[1] = n_indel_first[0] = n_indel_first[1] = n_err_first[0] = n_err_first[1] = 0;
               num_n[0]=num_n[1]=0;
+
+              // strand
+              if(2 == opt->strandedness || (0 == opt->strandedness && ILLUMINA == opt->data_type)) {
+                  // opposite strand by default for Illumina
+                  strand[0] = 0; strand[1] = 1; 
+              }
+              else if(1 == opt->strandedness || (0 == opt->strandedness && (SOLID == opt->data_type || IONTORRENT == opt->data_type))) {
+                  // same strands by default for SOLiD
+                  strand[0] = 0; strand[1] = 0; 
+              }
+              else {
+                  // should not reach here
+                  assert(1 == 0);
+              }
+              if (drand48() < 0.5) { // which strand ?
+                  // Flip strands 
+                  strand[0] = (1 + strand[0]) % 2;
+                  strand[1] = (1 + strand[1]) % 2;
+              }
                   
               // generate the reads in base space
-              if(0 == strand[0]) {
-                  if(0 < s[0]) { // F[FR]
-                      __gen_read(0, pos, ++i); // + strand
-                  }
-                  if(0 < s[1]) {
-                      if(1 == strand[1]) { // FR
-                          __gen_read(1, pos + s[0] + s[1] + d - 1, --i); // - strand
+              if(0 < s[1]) { // paired end or mate pair
+                  if(strand[0] == strand[1]) { // same strand
+                      if(0 == strand[0]) { // + strand
+                          /*
+                           * 5' E2 -----> .... E1 -----> 3'
+                           * 3'           ....           5'
+                           */
+                          __gen_read(0, pos + s[1] + d, ++i); 
+                          __gen_read(1, pos, ++i);
                       }
-                      else { // FF
-                          __gen_read(1, pos + d + s[0], ++i); // + strand
+                      else { // - strand
+                          /*
+                           * 3'           ....            5'
+                           * 5' <----- E1 .... <----- E2  3'
+                           */
+                          __gen_read(0, pos + s[0], --i);
+                          __gen_read(1, pos + s[0] + d + s[1], --i);
+                      }
+                  }
+                  else { // opposite strand
+                      if(0 == strand[0]) { // + strand
+                          /*
+                           * 5' E1 -----> ....           3'
+                           * 3'           .... <----- E2 5'
+                           */
+                          __gen_read(0, pos, ++i);
+                          __gen_read(1, pos + s[0] + d + s[1], --i);
+                      }
+                      else { // - strand
+                          /*
+                           * 5' E2 -----> ....           3'
+                           * 3'           .... <----- E1 5'
+                           */
+                          __gen_read(0, pos + s[1] + d + s[0], --i); 
+                          __gen_read(1, pos, i++);
                       }
                   }
               }
-              else { // (1 == strand[0]) 
-                  if(0 < s[0]) { // R[FR]
-                      __gen_read(0, pos + s[0] + s[1] + d - 1, --i); // - strand
+              else { // fragment
+                  if(0 == strand[0]) {
+                      __gen_read(0, pos, ++i); // + strand
                   }
-                  if(0 < s[1]) {
-                      if(0 == strand[1]) { // RF
-                          __gen_read(1, pos, ++i); // + strand
-                      }
-                      else {
-                          __gen_read(1, pos + s[1] - 1, --i); // - strand
-                      }
+                  else {
+                      __gen_read(0, pos + s[0] - 1, --i); // - strand
                   }
               }
 
@@ -695,19 +713,6 @@ void dwgsim_core(dwgsim_opt_t * opt)
                           __gen_errors_mismatches(tmp_seq, 1, s[1]-1, --i, s[1]); 
                       }
                   }
-              }
-
-              // flip reads, for paired end reads
-              if(flip_reads == 1) {
-                  j = s[0]; s[0] = s[1]; s[1] = j;
-                  j = strand[0]; strand[0] = strand[1]; strand[1] = j;
-                  j = n_sub[0]; n_sub[0] = n_sub[1]; n_sub[1] = j;
-                  j = n_indel[0]; n_indel[0] = n_indel[1]; n_indel[1] = j;
-                  j = n_err[0]; n_err[0] = n_err[1]; n_err[1] = j;
-                  j = ext_coor[0]; ext_coor[0] = ext_coor[1]; ext_coor[1] = j;
-                  j = n_sub_first[0]; n_sub_first[0] = n_sub_first[1]; n_sub_first[1] = j;
-                  j = n_indel_first[0]; n_indel_first[0] = n_indel_first[1]; n_indel_first[1] = j;
-                  j = n_err_first[0]; n_err_first[0] = n_err_first[1]; n_err_first[1] = j;
               }
 
               // print
