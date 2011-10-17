@@ -536,7 +536,7 @@ void dwgsim_core(dwgsim_opt_t * opt)
           int d, pos, s[2], strand[2];
           int n_sub[2], n_indel[2], n_err[2], ext_coor[2]={0,0}, j, k;
           int n_sub_first[2], n_indel_first[2], n_err_first[2]; // need this for SOLID data
-          int c1, c2, c;
+          int c1, c2, c, flip_reads;
               
           s[0] = size[0]; s[1] = size[1];
 
@@ -546,10 +546,12 @@ void dwgsim_core(dwgsim_opt_t * opt)
               if(2 == opt->strandedness || (0 == opt->strandedness && ILLUMINA == opt->data_type)) {
                   // opposite strand by default for Illumina
                   strand[0] = 0; strand[1] = 1; 
+                  flip_reads = 0;
               }
               else if(1 == opt->strandedness || (0 == opt->strandedness && (SOLID == opt->data_type || IONTORRENT == opt->data_type))) {
                   // same strands by default for SOLiD
                   strand[0] = 0; strand[1] = 0; 
+                  flip_reads = 1;
               }
               else {
                   // should not reach here
@@ -688,6 +690,19 @@ void dwgsim_core(dwgsim_opt_t * opt)
                           __gen_errors_mismatches(tmp_seq, 1, s[1]-1, --i, s[1]); 
                       }
                   }
+              }
+
+              // flip reads, for paired end reads
+              if(flip_reads == 1) {
+                  j = s[0]; s[0] = s[1]; s[1] = j;
+                  j = strand[0]; strand[0] = strand[1]; strand[1] = j;
+                  j = n_sub[0]; n_sub[0] = n_sub[1]; n_sub[1] = j;
+                  j = n_indel[0]; n_indel[0] = n_indel[1]; n_indel[1] = j;
+                  j = n_err[0]; n_err[0] = n_err[1]; n_err[1] = j;
+                  j = ext_coor[0]; ext_coor[0] = ext_coor[1]; ext_coor[1] = j;
+                  j = n_sub_first[0]; n_sub_first[0] = n_sub_first[1]; n_sub_first[1] = j;
+                  j = n_indel_first[0]; n_indel_first[0] = n_indel_first[1]; n_indel_first[1] = j;
+                  j = n_err_first[0]; n_err_first[0] = n_err_first[1]; n_err_first[1] = j;
               }
 
               // print
