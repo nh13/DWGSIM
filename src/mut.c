@@ -306,7 +306,7 @@ void mut_debug(const seq_t *seq, mutseq_t *hap1, mutseq_t *hap2)
 {
   int32_t i;
   // DEBUG
-  for (i = 0; i != seq->l; ++i) {
+  for (i = 0; i < seq->l; ++i) {
       mut_t c[3];
       c[0] = nst_nt4_table[(mut_t)seq->s[i]];
       c[1] = hap1->s[i]; c[2] = hap2->s[i];
@@ -396,7 +396,9 @@ mut_left_justify(const seq_t *seq, mutseq_t *hap1, mutseq_t *hap2)
   mut_t i, j;
   int del_length;
   int prev_del[2] = {0, 0};
-  for (i = 0; i != seq->l; ++i) {
+  assert(hap1->l == seq->l);
+  assert(hap2->l == seq->l);
+  for (i = 0; i < seq->l; ++i) {
       mut_t c[3];
       c[0] = nst_nt4_table[(mut_t)seq->s[i]];
       c[1] = hap1->s[i]; c[2] = hap2->s[i];
@@ -415,7 +417,7 @@ mut_left_justify(const seq_t *seq, mutseq_t *hap1, mutseq_t *hap2)
                   }
                   if(seq->l <= i+del_length) continue;
                   // left-justify
-                  for(j=i-1;0<=j;j--) {
+                  for(j=i-1;0 < i && 0<=j;j--) {
                       if(INSERT != (hap1->s[j]&mutmsk) && INSERT != (hap2->s[j]&mutmsk) // no insertion
                          && DELETE != (hap1->s[j]&mutmsk) && DELETE != (hap2->s[j]&mutmsk) // no deletion 
                          && (hap1->s[j]&3) == (hap1->s[j+del_length]&3)  // hap1 bases match
@@ -428,6 +430,7 @@ mut_left_justify(const seq_t *seq, mutseq_t *hap1, mutseq_t *hap2)
                       else {
                           break;
                       }
+                      if(0 == j) break;
                   }
               } else if ((c[1] & mutmsk) == INSERT) { // ins
                   prev_del[0] = prev_del[1] = 0;
@@ -446,7 +449,7 @@ mut_left_justify(const seq_t *seq, mutseq_t *hap1, mutseq_t *hap2)
                   }
                   if(seq->l <= i+del_length) continue;
                   // left-justify
-                  for(j=i-1;0<=j;j--) {
+                  for(j=i-1;0 < i && 0<=j;j--) {
                       if(INSERT != (hap1->s[j]&mutmsk) // no insertion
                          && DELETE != (hap1->s[j]&mutmsk) // no deletion 
                          && (hap1->s[j]&3) == (hap1->s[j+del_length]&3))  { // hap1 bases match
@@ -457,6 +460,7 @@ mut_left_justify(const seq_t *seq, mutseq_t *hap1, mutseq_t *hap2)
                       else {
                           break;
                       }
+                      if(0 == j) break;
                   }
               } else if ((c[2]&mutmsk) == DELETE) {
                   if(prev_del[1] == 1) continue;
@@ -466,7 +470,7 @@ mut_left_justify(const seq_t *seq, mutseq_t *hap1, mutseq_t *hap2)
                   }
                   if(seq->l <= i+del_length) continue;
                   // left-justify
-                  for(j=i-1;0<=j;j--) {
+                  for(j=i-1;0 < i && 0<=j;j--) {
                       if(INSERT != (hap2->s[j]&mutmsk) // no insertion
                          && DELETE != (hap2->s[j]&mutmsk) // no deletion 
                          && (hap2->s[j]&3) == (hap2->s[j+del_length]&3))  { // hap2 bases match
@@ -477,6 +481,7 @@ mut_left_justify(const seq_t *seq, mutseq_t *hap1, mutseq_t *hap2)
                       else {
                           break;
                       }
+                      if(0 == j) break;
                   }
               } else if ((c[1]&mutmsk) == INSERT) { // ins 1
                   prev_del[0] = prev_del[1] = 0;
@@ -509,7 +514,7 @@ void mut_diref(dwgsim_opt_t *opt, const seq_t *seq, mutseq_t *hap1, mutseq_t *ha
   ret[0]->ins_m = 0; ret[1]->ins_m = 0;
 
   if(NULL == muts_bed && NULL == muts_txt) {
-      for (i = 0; i != seq->l; ++i) {
+      for (i = 0; i < seq->l; ++i) {
           mut_t c;
           c = ret[0]->s[i] = ret[1]->s[i] = (mut_t)nst_nt4_table[(int)seq->s[i]];
           if (deleting) {
@@ -548,7 +553,7 @@ void mut_diref(dwgsim_opt_t *opt, const seq_t *seq, mutseq_t *hap1, mutseq_t *ha
   }
   else if(NULL != muts_txt) {
       // seed
-      for (i = 0; i != seq->l; ++i) {
+      for (i = 0; i < seq->l; ++i) {
           ret[0]->s[i] = ret[1]->s[i] = (mut_t)nst_nt4_table[(int)seq->s[i]];
       }
       for (i =0; i < muts_txt->n; ++i) {
@@ -574,7 +579,7 @@ void mut_diref(dwgsim_opt_t *opt, const seq_t *seq, mutseq_t *hap1, mutseq_t *ha
   }
   else { // BED
       // seed
-      for (i = 0; i != seq->l; ++i) {
+      for (i = 0; i < seq->l; ++i) {
           ret[0]->s[i] = ret[1]->s[i] = (mut_t)nst_nt4_table[(int)seq->s[i]];
       }
       // mutates exactly based on a BED file
@@ -652,7 +657,7 @@ void mut_print(const char *name, const seq_t *seq, mutseq_t *hap1, mutseq_t *hap
 {
   int32_t i, hap;
   
-  for (i = 0; i != seq->l; ++i) {
+  for (i = 0; i < seq->l; ++i) {
       mut_t c[3];
       c[0] = nst_nt4_table[(int)seq->s[i]];
       c[1] = hap1->s[i]; c[2] = hap2->s[i];
