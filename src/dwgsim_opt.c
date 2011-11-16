@@ -243,16 +243,22 @@ dwgsim_opt_parse(dwgsim_opt_t *opt, int argc, char *argv[])
   // random seed
   srand48((-1 == opt->seed) ? time(0) : opt->seed);
 
-  if(IONTORRENT == opt->data_type && NULL != opt->flow_order) {
-      // uniform error rates only (so far)
-      if(opt->e[0].start != opt->e[0].end || opt->e[1].start != opt->e[1].end) {
-          fprintf(stderr, "Error: non-uniform error rate not support for Ion Torrent data\n");
-          return 0;
+  if(IONTORRENT == opt->data_type) {
+      if(NULL != opt->flow_order) {
+          // uniform error rates only (so far)
+          if(opt->e[0].start != opt->e[0].end || opt->e[1].start != opt->e[1].end) {
+              fprintf(stderr, "Error: non-uniform error rate not support for Ion Torrent data\n");
+              return 0;
+          }
+          // update flow order
+          opt->flow_order_len = strlen((char*)opt->flow_order);
+          for(i=0;i<opt->flow_order_len;i++) {
+              opt->flow_order[i] = nst_nt4_table[opt->flow_order[i]];
+          }
       }
-      // update flow order
-      opt->flow_order_len = strlen((char*)opt->flow_order);
-      for(i=0;i<opt->flow_order_len;i++) {
-          opt->flow_order[i] = nst_nt4_table[opt->flow_order[i]];
+      else {
+          fprintf(stderr, "Error: -f must be given for Ion Torrent data\n");
+          return 0;
       }
   }
   // use base error rate
