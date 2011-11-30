@@ -117,9 +117,9 @@ main(int argc, char *argv[])
   args.s = -1;
   args.S = 0;
 
-  while(0 <= (c = getopt(argc, argv, "d:e:g:m:n:q:s:abchimpzS"))) {
+  while(0 <= (c = getopt(argc, argv, "a:d:e:g:m:n:q:s:bchimpzS"))) {
       switch(c) {
-        case 'a': args.a = 1; break;
+        case 'a': args.a = atoi(optarg); break;
         case 'b': args.b = 1; break;
         case 'c': args.c = 1; break;
         case 'd': args.d = atoi(optarg); break;
