@@ -188,9 +188,11 @@ run(dwgsim_eval_args_t *args,
               // do nothing
           }
           else {
-              free(prev_qname);
-              prev_qname = strdup(bam1_qname(b));
-              prev_end = (BAM_FREAD1 & b->core.flag);
+              if(1 == args->m) {
+                  free(prev_qname);
+                  prev_qname = strdup(bam1_qname(b));
+                  prev_end = (BAM_FREAD1 & b->core.flag);
+              }
 
               process_bam(counts, args, fp_in->header, b, fp_out);
 
