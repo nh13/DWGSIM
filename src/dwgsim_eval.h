@@ -19,6 +19,7 @@ typedef struct {
     int32_t s; // print only alignments with # of SNPs 
     int32_t z; // input reads are single end
     int32_t S; // input reads are in text SAM format
+    char *P; // read name prefix
 } dwgsim_eval_args_t;
 
 // Actual value

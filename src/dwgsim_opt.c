@@ -63,6 +63,7 @@ dwgsim_opt_t* dwgsim_opt_init()
   opt->fn_regions_bed = NULL;
   opt->fp_mut = opt->fp_bfast = opt->fp_bwa1 = opt->fp_bwa2 = NULL;
   opt->fp_fa = opt->fp_fai = NULL;
+  opt->read_prefix = NULL;
 
   return opt;
 }
@@ -73,6 +74,7 @@ void dwgsim_opt_destroy(dwgsim_opt_t *opt)
   free(opt->fn_muts_bed);
   free(opt->fn_regions_bed);
   free(opt->flow_order);
+  free(opt->read_prefix);
   free(opt);
 }
 
@@ -114,6 +116,7 @@ int dwgsim_opt_usage(dwgsim_opt_t *opt)
   fprintf(stderr, "         -m FILE       the mutations txt file to re-create [%s]\n", (NULL == opt->fn_muts_txt) ? "not using" : opt->fn_muts_txt);
   fprintf(stderr, "         -b FILE       the bed-like set of candidate mutations [%s]\n", (NULL == opt->fn_muts_bed) ? "not using" : opt->fn_muts_bed);
   fprintf(stderr, "         -x FILE       the bed of regions to cover [%s]\n", (NULL == opt->fn_regions_bed) ? "not using" : opt->fn_regions_bed);
+  fprintf(stderr, "         -P STRING     a read prefix to prepend to each read name [%s]\n", (NULL == opt->read_prefix) ? "not using" : opt->read_prefix);
   fprintf(stderr, "         -h            print this message\n");
   fprintf(stderr, "\n");
   fprintf(stderr, "Note: For SOLiD mate pair reads and BFAST, the first read is F3 and the second is R3. For SOLiD mate pair reads\n");
@@ -149,7 +152,7 @@ dwgsim_opt_parse(dwgsim_opt_t *opt, int argc, char *argv[])
   int32_t i;
   int c;
   
-  while ((c = getopt(argc, argv, "d:s:N:C:1:2:e:E:r:R:X:I:c:S:n:y:BHf:z:m:b:x:h")) >= 0) {
+  while ((c = getopt(argc, argv, "d:s:N:C:1:2:e:E:r:R:X:I:c:S:n:y:BHf:z:m:b:x:P:h")) >= 0) {
       switch (c) {
         case 'd': opt->dist = atoi(optarg); break;
         case 's': opt->std_dev = atof(optarg); break;
@@ -178,6 +181,7 @@ dwgsim_opt_parse(dwgsim_opt_t *opt, int argc, char *argv[])
         case 'm': free(opt->fn_muts_txt); opt->fn_muts_txt = strdup(optarg); break;
         case 'b': free(opt->fn_muts_bed); opt->fn_muts_bed = strdup(optarg); break;
         case 'x': free(opt->fn_regions_bed); opt->fn_regions_bed = strdup(optarg); break;
+        case 'P': free(opt->read_prefix); opt->read_prefix = strdup(optarg); break;
         default: fprintf(stderr, "Unrecognized option: -%c\n", c); return 0;
       }
   }
@@ -234,6 +238,10 @@ dwgsim_opt_parse(dwgsim_opt_t *opt, int argc, char *argv[])
   }
   __check_option(opt->use_base_error, 0, 1, "-B");
   __check_option(opt->is_hap, 0, 1, "-H");
+
+  if(NULL != opt->read_prefix) {
+      fprintf(stderr, "Warning: remember to use the -P option with dwgsim_eval\n");
+  }
   
   if(NULL != opt->fn_muts_txt && NULL != opt->fn_muts_bed) {
       fprintf(stderr, "Error: -m and -b cannot be used together\n");

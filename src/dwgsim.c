@@ -393,7 +393,7 @@ void dwgsim_core(dwgsim_opt_t * opt)
   mutseq_t *mutseq[2]={NULL,NULL};
   uint64_t tot_len, ii=0, ctr=0;
   int i, l, n_ref, contig_i;
-  char name[256], *qstr;
+  char name[1024], *qstr;
   int size[2], prev_skip=0, qstr_l=0;
   int num_n[2];
   uint8_t *tmp_seq[2]={NULL,NULL};
@@ -731,7 +731,8 @@ void dwgsim_core(dwgsim_opt_t * opt)
                   // BWA
                   FILE *fpo = (0 == j) ? opt->fp_bwa1: opt->fp_bwa2;
                   if(ILLUMINA == opt->data_type || IONTORRENT == opt->data_type) {
-                      fprintf(fpo, "@%s_%u_%u_%1u_%1u_%1u_%1u_%d:%d:%d_%d:%d:%d_%llx/%d\n", 
+                      fprintf(fpo, "@%s_%s_%u_%u_%1u_%1u_%1u_%1u_%d:%d:%d_%d:%d:%d_%llx/%d\n", 
+                              (NULL == opt->read_prefix) ? "" : opt->read_prefix,
                               name, ext_coor[0]+1, ext_coor[1]+1, strand[0], strand[1], 0, 0,
                               n_err[0], n_sub[0], n_indel[0],
                               n_err[1], n_sub[1],n_indel[1],
@@ -747,7 +748,8 @@ void dwgsim_core(dwgsim_opt_t * opt)
                       //
                       // Note: BWA outputs F3 to read1, annotated as read "2", and outputs R3 to read2,
                       // annotated as read "1".
-                      fprintf(fpo, "@%s_%u_%u_%1u_%1u_%1u_%1u_%d:%d:%d_%d:%d:%d_%llx/%d\n", 
+                      fprintf(fpo, "@%s_%s_%u_%u_%1u_%1u_%1u_%1u_%d:%d:%d_%d:%d:%d_%llx/%d\n", 
+                              (NULL == opt->read_prefix) ? "" : opt->read_prefix,
                               name, ext_coor[0]+1, ext_coor[1]+1, strand[0], strand[1], 0, 0,
                               n_err[0] - n_err_first[0], n_sub[0] - n_sub_first[0], n_indel[0] - n_indel_first[0], 
                               n_err[1] - n_err_first[1], n_sub[1] - n_sub_first[1], n_indel[1] - n_indel_first[1],
@@ -762,7 +764,8 @@ void dwgsim_core(dwgsim_opt_t * opt)
                   }
 
                   // BFAST output
-                  fprintf(opt->fp_bfast, "@%s_%u_%u_%1u_%1u_%1u_%1u_%d:%d:%d_%d:%d:%d_%llx\n", 
+                  fprintf(opt->fp_bfast, "@%s_%s_%u_%u_%1u_%1u_%1u_%1u_%d:%d:%d_%d:%d:%d_%llx\n", 
+                          (NULL == opt->read_prefix) ? "" : opt->read_prefix,
                           name, ext_coor[0]+1, ext_coor[1]+1, strand[0], strand[1], 0, 0,
                           n_err[0], n_sub[0], n_indel[0], n_err[1], n_sub[1], n_indel[1],
                           (long long)ii);
@@ -812,7 +815,8 @@ void dwgsim_core(dwgsim_opt_t * opt)
                   // BWA
                   FILE *fpo = (0 == j) ? opt->fp_bwa1: opt->fp_bwa2;
                   if(ILLUMINA == opt->data_type || IONTORRENT == opt->data_type) {
-                      fprintf(fpo, "@%s_%u_%u_%1u_%1u_%1u_%1u_%d:%d:%d_%d:%d:%d_%llx/%d\n", 
+                      fprintf(fpo, "@%s_%s_%u_%u_%1u_%1u_%1u_%1u_%d:%d:%d_%d:%d:%d_%llx/%d\n", 
+                              (NULL == opt->read_prefix) ? "" : opt->read_prefix,
                               "rand", 0, 0, 0, 0, 1, 1,
                               0, 0, 0, 0, 0, 0,
                               (long long)ii,
@@ -828,7 +832,8 @@ void dwgsim_core(dwgsim_opt_t * opt)
                       //
                       // Note: BWA outputs F3 to read1, annotated as read "2", and outputs R3 to read2,
                       // annotated as read "1".
-                      fprintf(fpo, "@%s_%u_%u_%1u_%1u_%1u_%1u_%d:%d:%d_%d:%d:%d_%llx/%d\n", 
+                      fprintf(fpo, "@%s_%s_%u_%u_%1u_%1u_%1u_%1u_%d:%d:%d_%d:%d:%d_%llx/%d\n", 
+                              (NULL == opt->read_prefix) ? "" : opt->read_prefix,
                               "rand", 0, 0, 0, 0, 1, 1,
                               0, 0, 0, 0, 0, 0,
                               (long long)ii, 2 - j);
@@ -842,7 +847,8 @@ void dwgsim_core(dwgsim_opt_t * opt)
                   }
 
                   // BFAST output
-                  fprintf(opt->fp_bfast, "@%s_%u_%u_%1u_%1u_%1u_%1u_%d:%d:%d_%d:%d:%d_%llx\n", 
+                  fprintf(opt->fp_bfast, "@%s_%s_%u_%u_%1u_%1u_%1u_%1u_%d:%d:%d_%d:%d:%d_%llx\n", 
+                          (NULL == opt->read_prefix) ? "" : opt->read_prefix,
                           "rand", 0, 0, 0, 0, 1, 1,
                           0, 0, 0, 0, 0, 0,
                           (long long)ii);

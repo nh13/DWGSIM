@@ -36,6 +36,7 @@ typedef struct {
     FILE *fp_bwa2;
     FILE *fp_fa;
     FILE *fp_fai;
+    char *read_prefix;
 } dwgsim_opt_t;
 
 dwgsim_opt_t* 
