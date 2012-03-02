@@ -27,6 +27,7 @@ typedef struct {
     int32_t use_base_error;
     int32_t is_hap;
     int32_t seed;
+    char *fixed_quality;
     char *fn_muts_txt;
     char *fn_muts_bed;
     char *fn_regions_bed;

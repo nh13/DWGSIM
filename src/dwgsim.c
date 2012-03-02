@@ -724,8 +724,15 @@ void dwgsim_core(dwgsim_opt_t * opt)
                       qstr_l = s[j];
                       qstr = realloc(qstr, (1+qstr_l) * sizeof(char));
                   }
-                  for (i = 0; i < s[j]; ++i) {
-                      qstr[i] = (int)(-10.0 * log(e[j]->start + e[j]->by*i) / log(10.0) + 0.499) + 33;
+                  if(NULL != opt->fixed_quality) {
+                      for (i = 0; i < s[j]; ++i) {
+                          qstr[i] = opt->fixed_quality[0];
+                      }
+                  }
+                  else {
+                      for (i = 0; i < s[j]; ++i) {
+                          qstr[i] = (int)(-10.0 * log(e[j]->start + e[j]->by*i) / log(10.0) + 0.499) + 33;
+                      }
                   }
                   qstr[i] = 0;
                   // BWA
@@ -796,9 +803,15 @@ void dwgsim_core(dwgsim_opt_t * opt)
                       qstr = realloc(qstr, (1+qstr_l) * sizeof(char));
                   }
                   // get random sequence
-                  for(i=0;i<s[j];i++) {
-                      tmp_seq[j][i] = (int)(drand48() * 4.0) & 3;
-                      qstr[i] = (int)(-10.0 * log(e[j]->start + e[j]->by*i) / log(10.0) + 0.499) + 33;
+                  if(NULL != opt->fixed_quality) {
+                      for (i = 0; i < s[j]; ++i) {
+                          qstr[i] = opt->fixed_quality[0];
+                      }
+                  }
+                  else {
+                      for (i = 0; i < s[j]; ++i) {
+                          qstr[i] = (int)(-10.0 * log(e[j]->start + e[j]->by*i) / log(10.0) + 0.499) + 33;
+                      }
                   }
                   qstr[i] = 0;
                   if(SOLID == opt->data_type) { // convert to color space
