@@ -521,6 +521,13 @@ void dwgsim_core(dwgsim_opt_t * opt)
           contig_i++;
           continue;
       }
+      else if (l < opt->length[0] || (0 < opt->length[1] && l < opt->length[1])) {
+          if(0 == prev_skip) fprintf(stderr, "\n");
+          prev_skip = 1;
+          fprintf(stderr, "[dwgsim_core] skip sequence '%s' as it is shorter than %d!\n", name, (l < opt->length[0]) ? opt->length[0] : opt->length[1]);
+          contig_i++;
+          continue;
+      }
       else if (n_pairs < 0) { // NB: this should not happen
           // not enough pairs
           continue;
