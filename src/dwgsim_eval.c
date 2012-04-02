@@ -298,8 +298,8 @@ process_bam(dwgsim_eval_counts_t *counts,
 
   // parse read name
   name = strdup(bam1_qname(b));
-  char *to_rm="_::_::_______"; // to remove
-  for(i=b->core.l_qname-1,j=0;0<=i && j<13;i--) { // replace with spaces 
+  char *to_rm="_::_::________"; // to remove
+  for(i=b->core.l_qname-1,j=0;0<=i && j<14;i--) { // replace with spaces 
       if(name[i] == to_rm[j]) {
           name[i] = ' '; j++; 
       }
@@ -316,7 +316,7 @@ process_bam(dwgsim_eval_counts_t *counts,
       i = tmp + 1; 
   }
   if(14 != sscanf(name+i, "%s %d %d %1d %1d %1d %1d %d %d %d %d %d %d %s",
-                  chr_name, &pos_1, &pos_2, &str_1, &str_2, &rand_1, &rand2,
+		  chr_name, &pos_1, &pos_2, &str_1, &str_2, &rand_1, &rand2,
                   &n_err_1, &n_sub_1, &n_indel_1,
                   &n_err_2, &n_sub_2, &n_indel_2,
                   read_num)) {
