@@ -919,6 +919,9 @@ void dwgsim_core(dwgsim_opt_t * opt)
 int main(int argc, char *argv[])
 {
   dwgsim_opt_t *opt = NULL;
+  
+  // update the mutant sequence bounds
+  mutseq_init_bounds();
 
   opt = dwgsim_opt_init();
 
