@@ -211,7 +211,8 @@ mut_print_ins(FILE *fp, mutseq_t *seq, int32_t i)
 // bases is NULL if we are to randomly simulate the bases
 void mut_add_ins(dwgsim_opt_t *opt, mutseq_t *hap1, mutseq_t *hap2, int32_t i, int32_t c, int8_t hap, char *bases, mut_t num_ins)
 {
-  mut_t ins = 0, j;
+  mut_t ins = 0;
+  int64_t j;
 
   if (NULL == bases) {
       if(num_ins == 0) {
