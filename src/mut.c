@@ -573,7 +573,7 @@ void mut_diref(dwgsim_opt_t *opt, const seq_t *seq, mutseq_t *hap1, mutseq_t *ha
                   if (is_hap & 2) ret[1]->s[pos-1] = SUBSTITUTE|nst_nt4_table[(int)muts_txt->muts[i].bases[0]];
               }
               else if (INSERT == type) {
-                  mut_add_ins(opt, ret[0], ret[1], i, c, is_hap, muts_txt->muts[i].bases, 0);
+                  mut_add_ins(opt, ret[0], ret[1], pos-1, c, is_hap, muts_txt->muts[i].bases, 0);
               }
           }
       }
