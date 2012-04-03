@@ -424,7 +424,7 @@ void dwgsim_core(dwgsim_opt_t * opt)
   }
   tmp_seq_mem[0] = tmp_seq_mem[1] = l+2;
   size[0] = opt->length[0]; size[1] = opt->length[1];
-  
+
   if(NULL != opt->fn_muts_txt) {
       fp_muts_txt = xopen(opt->fn_muts_txt, "r");
       contigs = contigs_init();
@@ -437,7 +437,7 @@ void dwgsim_core(dwgsim_opt_t * opt)
       fp_regions_bed = xopen(opt->fn_regions_bed, "r");
       if(NULL == contigs) contigs = contigs_init();
   }
-  
+
   tot_len = n_ref = 0;
   if(NULL != opt->fp_fai) {
       int dummy_int[3];
@@ -481,7 +481,7 @@ void dwgsim_core(dwgsim_opt_t * opt)
       contigs_destroy(contigs);
       contigs = NULL;
   }
-  
+
   fprintf(stderr, "[dwgsim_core] Currently on: \n0");
   contig_i = 0;
   while ((l = seq_read_fasta(opt->fp_fa, &seq, name, 0)) >= 0) {
@@ -549,7 +549,7 @@ void dwgsim_core(dwgsim_opt_t * opt)
           int n_sub[2], n_indel[2], n_err[2], ext_coor[2]={0,0}, j, k;
           int n_sub_first[2], n_indel_first[2], n_err_first[2]; // need this for SOLID data
           int c1, c2, c;
-              
+
           s[0] = size[0]; s[1] = size[1];
 
           if(opt->rand_read < drand48()) { 
@@ -618,7 +618,7 @@ void dwgsim_core(dwgsim_opt_t * opt)
                   strand[0] = (1 + strand[0]) % 2;
                   strand[1] = (1 + strand[1]) % 2;
               }
-                  
+
               // generate the reads in base space
               if(0 < s[1]) { // paired end or mate pair
                   if(strand[0] == strand[1]) { // same strand
@@ -745,8 +745,9 @@ void dwgsim_core(dwgsim_opt_t * opt)
                   // BWA
                   FILE *fpo = (0 == j) ? opt->fp_bwa1: opt->fp_bwa2;
                   if(ILLUMINA == opt->data_type || IONTORRENT == opt->data_type) {
-                      fprintf(fpo, "@%s_%s_%u_%u_%1u_%1u_%1u_%1u_%d:%d:%d_%d:%d:%d_%llx/%d\n", 
+                      fprintf(fpo, "@%s%s%s_%u_%u_%1u_%1u_%1u_%1u_%d:%d:%d_%d:%d:%d_%llx/%d\n", 
                               (NULL == opt->read_prefix) ? "" : opt->read_prefix,
+                              (NULL == opt->read_prefix) ? "" : "_",
                               name, ext_coor[0]+1, ext_coor[1]+1, strand[0], strand[1], 0, 0,
                               n_err[0], n_sub[0], n_indel[0],
                               n_err[1], n_sub[1],n_indel[1],
@@ -762,8 +763,9 @@ void dwgsim_core(dwgsim_opt_t * opt)
                       //
                       // Note: BWA outputs F3 to read1, annotated as read "2", and outputs R3 to read2,
                       // annotated as read "1".
-                      fprintf(fpo, "@%s_%s_%u_%u_%1u_%1u_%1u_%1u_%d:%d:%d_%d:%d:%d_%llx/%d\n", 
+                      fprintf(fpo, "@%s%s%s_%u_%u_%1u_%1u_%1u_%1u_%d:%d:%d_%d:%d:%d_%llx/%d\n", 
                               (NULL == opt->read_prefix) ? "" : opt->read_prefix,
+                              (NULL == opt->read_prefix) ? "" : "_",
                               name, ext_coor[0]+1, ext_coor[1]+1, strand[0], strand[1], 0, 0,
                               n_err[0] - n_err_first[0], n_sub[0] - n_sub_first[0], n_indel[0] - n_indel_first[0], 
                               n_err[1] - n_err_first[1], n_sub[1] - n_sub_first[1], n_indel[1] - n_indel_first[1],
@@ -778,8 +780,9 @@ void dwgsim_core(dwgsim_opt_t * opt)
                   }
 
                   // BFAST output
-                  fprintf(opt->fp_bfast, "@%s_%s_%u_%u_%1u_%1u_%1u_%1u_%d:%d:%d_%d:%d:%d_%llx\n", 
+                  fprintf(opt->fp_bfast, "@%s%s%s_%u_%u_%1u_%1u_%1u_%1u_%d:%d:%d_%d:%d:%d_%llx\n", 
                           (NULL == opt->read_prefix) ? "" : opt->read_prefix,
+                          (NULL == opt->read_prefix) ? "" : "_",
                           name, ext_coor[0]+1, ext_coor[1]+1, strand[0], strand[1], 0, 0,
                           n_err[0], n_sub[0], n_indel[0], n_err[1], n_sub[1], n_indel[1],
                           (long long)ii);
@@ -803,7 +806,7 @@ void dwgsim_core(dwgsim_opt_t * opt)
           else { // random DNA read
               for(j=0;j<2;j++) {
                   if(s[j] <= 0) {
-                     continue;
+                      continue;
                   } 
                   if(IONTORRENT == opt->data_type && qstr_l < s[j]) {
                       qstr_l = s[j];
@@ -835,8 +838,9 @@ void dwgsim_core(dwgsim_opt_t * opt)
                   // BWA
                   FILE *fpo = (0 == j) ? opt->fp_bwa1: opt->fp_bwa2;
                   if(ILLUMINA == opt->data_type || IONTORRENT == opt->data_type) {
-                      fprintf(fpo, "@%s_%s_%u_%u_%1u_%1u_%1u_%1u_%d:%d:%d_%d:%d:%d_%llx/%d\n", 
+                      fprintf(fpo, "@%s%s%s_%u_%u_%1u_%1u_%1u_%1u_%d:%d:%d_%d:%d:%d_%llx/%d\n", 
                               (NULL == opt->read_prefix) ? "" : opt->read_prefix,
+                              (NULL == opt->read_prefix) ? "" : "_",
                               "rand", 0, 0, 0, 0, 1, 1,
                               0, 0, 0, 0, 0, 0,
                               (long long)ii,
@@ -852,8 +856,9 @@ void dwgsim_core(dwgsim_opt_t * opt)
                       //
                       // Note: BWA outputs F3 to read1, annotated as read "2", and outputs R3 to read2,
                       // annotated as read "1".
-                      fprintf(fpo, "@%s_%s_%u_%u_%1u_%1u_%1u_%1u_%d:%d:%d_%d:%d:%d_%llx/%d\n", 
+                      fprintf(fpo, "@%s%s%s_%u_%u_%1u_%1u_%1u_%1u_%d:%d:%d_%d:%d:%d_%llx/%d\n", 
                               (NULL == opt->read_prefix) ? "" : opt->read_prefix,
+                              (NULL == opt->read_prefix) ? "" : "_",
                               "rand", 0, 0, 0, 0, 1, 1,
                               0, 0, 0, 0, 0, 0,
                               (long long)ii, 2 - j);
@@ -867,8 +872,9 @@ void dwgsim_core(dwgsim_opt_t * opt)
                   }
 
                   // BFAST output
-                  fprintf(opt->fp_bfast, "@%s_%s_%u_%u_%1u_%1u_%1u_%1u_%d:%d:%d_%d:%d:%d_%llx\n", 
+                  fprintf(opt->fp_bfast, "@%s%s%s_%u_%u_%1u_%1u_%1u_%1u_%d:%d:%d_%d:%d:%d_%llx\n", 
                           (NULL == opt->read_prefix) ? "" : opt->read_prefix,
+                          (NULL == opt->read_prefix) ? "" : "_",
                           "rand", 0, 0, 0, 0, 1, 1,
                           0, 0, 0, 0, 0, 0,
                           (long long)ii);
@@ -919,7 +925,7 @@ void dwgsim_core(dwgsim_opt_t * opt)
 int main(int argc, char *argv[])
 {
   dwgsim_opt_t *opt = NULL;
-  
+
   // update the mutant sequence bounds
   mutseq_init_bounds();
 
