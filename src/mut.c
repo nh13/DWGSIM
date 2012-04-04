@@ -195,9 +195,9 @@ mut_print_ins(FILE *fp, mutseq_t *seq, int32_t i)
       n = seq->ins[ins][0]; // long insertion length
       // reverse order
       byte_index = mut_get_ins_bytes(n) - 1;
-      bit_index = n & 3; // % 4
+      bit_index = (n+3) & 3; // % 4
       while(0 < n) {
-          fputc("ACGTN"[(seq->ins[ins][byte_index] >> (bit_index >> 1)) & 0x3], fp);
+          fputc("ACGTN"[(seq->ins[ins][byte_index] >> (bit_index << 1)) & 0x3], fp);
           bit_index--;
           if(bit_index < 0) {
               bit_index = 3;
@@ -253,7 +253,7 @@ void mut_add_ins(dwgsim_opt_t *opt, mutseq_t *hap1, mutseq_t *hap2, int32_t i, i
       if (hap & 0x2) hap2->s[i] = (num_ins << ins_length_shift) | (ins << muttype_shift) | INSERT | c;
   } else { // long
       int32_t byte_index, bit_index;
-      int32_t hap1_byte_l=0, hap2_byte_l=0; // HER
+      int32_t hap1_byte_l=0, hap2_byte_l=0; 
       if (hap & 0x1) {
           while (hap1->ins_m <= hap1->ins_l) { // realloc
               hap1->ins_m = (hap1->ins_m < 16) ? 16 : (hap1->ins_m << 1); 

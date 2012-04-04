@@ -54,7 +54,7 @@ mutseq_init();
 void
 mutseq_destroy(mutseq_t *seq);
 
-#define mut_get_ins_bytes(_num_ins) (1 + ((_num_ins + 7) >> 2))
+#define mut_get_ins_bytes(_num_ins) (1 + ((_num_ins + 3) >> 2))
 
 mut_t
 mut_get_ins_length(mutseq_t *seq, int32_t i);
