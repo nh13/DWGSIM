@@ -116,7 +116,7 @@ int dwgsim_opt_usage(dwgsim_opt_t *opt)
   fprintf(stderr, "         -z INT        random seed (-1 uses the current time) [%d]\n", opt->seed);
   fprintf(stderr, "         -m FILE       the mutations txt file to re-create [%s]\n", (MUT_INPUT_TXT != opt->fn_muts_input_type) ? "not using" : opt->fn_muts_input);
   fprintf(stderr, "         -b FILE       the bed-like file set of candidate mutations [%s]\n", (MUT_INPUT_BED == opt->fn_muts_input_type) ? "not using" : opt->fn_muts_input);
-  fprintf(stderr, "         -v FILE       the vcf file set of candidate mutations [%s]\n", (MUT_INPUT_VCF == opt->fn_muts_input_type) ? "not using" : opt->fn_muts_input);
+  fprintf(stderr, "         -v FILE       the vcf file set of candidate mutations (use pl tag for strand) [%s]\n", (MUT_INPUT_VCF == opt->fn_muts_input_type) ? "not using" : opt->fn_muts_input);
   fprintf(stderr, "         -x FILE       the bed of regions to cover [%s]\n", (NULL == opt->fn_regions_bed) ? "not using" : opt->fn_regions_bed);
   fprintf(stderr, "         -P STRING     a read prefix to prepend to each read name [%s]\n", (NULL == opt->read_prefix) ? "not using" : opt->read_prefix);
   fprintf(stderr, "         -q STRING     a fixed base quality to apply (single character) [%s]\n", (NULL == opt->fixed_quality) ? "not using" : opt->fixed_quality);
