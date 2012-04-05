@@ -499,7 +499,7 @@ mut_left_justify(const seq_t *seq, mutseq_t *hap1, mutseq_t *hap2)
 }
 
 void mut_diref(dwgsim_opt_t *opt, const seq_t *seq, mutseq_t *hap1, mutseq_t *hap2, 
-               int32_t contig_i, muts_txt_t *muts_txt, muts_bed_t *muts_bed)
+               int32_t contig_i, muts_input_t *muts_input)
 {
   int32_t i, j, deleting = 0, deletion_length = 0;
   mutseq_t *ret[2];
@@ -513,7 +513,7 @@ void mut_diref(dwgsim_opt_t *opt, const seq_t *seq, mutseq_t *hap1, mutseq_t *ha
   ret[0]->ins_l = 0; ret[1]->ins_l = 0;
   ret[0]->ins_m = 0; ret[1]->ins_m = 0;
 
-  if(NULL == muts_bed && NULL == muts_txt) {
+  if(NULL == muts_input) {
       for (i = 0; i < seq->l; ++i) {
           mut_t c;
           c = ret[0]->s[i] = ret[1]->s[i] = (mut_t)nst_nt4_table[(int)seq->s[i]];
@@ -551,97 +551,105 @@ void mut_diref(dwgsim_opt_t *opt, const seq_t *seq, mutseq_t *hap1, mutseq_t *ha
           }
       }
   }
-  else if(NULL != muts_txt) {
-      // seed
-      for (i = 0; i < seq->l; ++i) {
-          ret[0]->s[i] = ret[1]->s[i] = (mut_t)nst_nt4_table[(int)seq->s[i]];
-      }
-      for (i =0; i < muts_txt->n; ++i) {
-          if (muts_txt->muts[i].contig == contig_i) {
-              int8_t type = muts_txt->muts[i].type;
-              uint32_t pos = muts_txt->muts[i].pos;
-              int8_t is_hap = muts_txt->muts[i].is_hap;
-              mut_t c = (mut_t)nst_nt4_table[(int)seq->s[pos-1]];
-
-              if (DELETE == type) {
-                  if (is_hap & 1) ret[0]->s[pos-1] |= DELETE|c;
-                  if (is_hap & 2) ret[1]->s[pos-1] |= DELETE|c;
-              }
-              else if (SUBSTITUTE == type) {
-                  if (is_hap & 1) ret[0]->s[pos-1] = SUBSTITUTE|nst_nt4_table[(int)muts_txt->muts[i].bases[0]];
-                  if (is_hap & 2) ret[1]->s[pos-1] = SUBSTITUTE|nst_nt4_table[(int)muts_txt->muts[i].bases[0]];
-              }
-              else if (INSERT == type) {
-                  mut_add_ins(opt, ret[0], ret[1], i, c, is_hap, muts_txt->muts[i].bases, 0);
-              }
+  else {
+      if(MUT_INPUT_BED == muts_input->type) { // BED
+          muts_bed_t *muts_bed = muts_input->data.bed; 
+          // seed
+          for (i = 0; i < seq->l; ++i) {
+              ret[0]->s[i] = ret[1]->s[i] = (mut_t)nst_nt4_table[(int)seq->s[i]];
           }
-      }
-  }
-  else { // BED
-      // seed
-      for (i = 0; i < seq->l; ++i) {
-          ret[0]->s[i] = ret[1]->s[i] = (mut_t)nst_nt4_table[(int)seq->s[i]];
-      }
-      // mutates exactly based on a BED file
-      for (i = 0; i < muts_bed->n; ++i) {
-          if (muts_bed->muts[i].contig == contig_i) {
-              int32_t has_bases = 1, is_hom = 0, hap = 0;
-              int32_t which_hap = 0;
-              mut_t c;
+          // mutates exactly based on a BED file
+          for (i = 0; i < muts_bed->n; ++i) {
+              if (muts_bed->muts[i].contig == contig_i) {
+                  int32_t has_bases = 1, is_hom = 0, hap = 0;
+                  int32_t which_hap = 0;
+                  mut_t c;
 
-              // does this mutation have random bases?
-              if (0 == strcmp("*", muts_bed->muts[i].bases)) has_bases = 0; // random bases
+                  // does this mutation have random bases?
+                  if (0 == strcmp("*", muts_bed->muts[i].bases)) has_bases = 0; // random bases
 
-              // het or hom?
-              if (opt->is_hap || drand48() < 0.333333) {
-                  is_hom = 1; // hom
-                  hap = 3;
-              }
-              else {
-                  which_hap = drand48()<0.5?0:1;
-                  hap = 1 << which_hap;
-              }
+                  // het or hom?
+                  if (opt->is_hap || drand48() < 0.333333) {
+                      is_hom = 1; // hom
+                      hap = 3;
+                  }
+                  else {
+                      which_hap = drand48()<0.5?0:1;
+                      hap = 1 << which_hap;
+                  }
 
-              // mutate
-              if (SUBSTITUTE == muts_bed->muts[i].type) {
-                  for (j = muts_bed->muts[i].start; j < muts_bed->muts[i].end; ++j) { // for each base
-                      c = (mut_t)nst_nt4_table[(int)seq->s[j]];
-                      if (0 == has_bases) { // random DNA base
-                          double r = drand48();
-                          c = (c + (mut_t)(r * 3.0 + 1)) & 3;
+                  // mutate
+                  if (SUBSTITUTE == muts_bed->muts[i].type) {
+                      for (j = muts_bed->muts[i].start; j < muts_bed->muts[i].end; ++j) { // for each base
+                          c = (mut_t)nst_nt4_table[(int)seq->s[j]];
+                          if (0 == has_bases) { // random DNA base
+                              double r = drand48();
+                              c = (c + (mut_t)(r * 3.0 + 1)) & 3;
+                          }
+                          else {
+                              c = (mut_t)nst_nt4_table[(int)muts_bed->muts[i].bases[j - muts_bed->muts[i].start]]; 
+                          }
+                          if (1 == is_hom) {
+                              ret[0]->s[j] = ret[1]->s[j] = SUBSTITUTE|c;
+                          } else { // het
+                              ret[which_hap]->s[j] = SUBSTITUTE|c;
+                          }
                       }
-                      else {
-                          c = (mut_t)nst_nt4_table[(int)muts_bed->muts[i].bases[j - muts_bed->muts[i].start]]; 
+                  }
+                  else if (DELETE == muts_bed->muts[i].type) {
+                      for (j = muts_bed->muts[i].start; j < muts_bed->muts[i].end; ++j) { // for each base
+                          c = (mut_t)nst_nt4_table[(int)seq->s[j]];
+                          if (1 == is_hom) {
+                              ret[0]->s[j] = ret[1]->s[j] = DELETE|c;
+                          } else { // het-del
+                              ret[which_hap]->s[j] = DELETE|c;
+                          }
                       }
-                      if (1 == is_hom) {
-                          ret[0]->s[j] = ret[1]->s[j] = SUBSTITUTE|c;
-                      } else { // het
-                          ret[which_hap]->s[j] = SUBSTITUTE|c;
+                  }
+                  else if (INSERT == muts_bed->muts[i].type) {
+                      c = (mut_t)nst_nt4_table[(int)seq->s[muts_bed->muts[i].start]];
+                      if (0 == has_bases) {
+                          mut_add_ins(opt, ret[0], ret[1], muts_bed->muts[i].start, c, hap, NULL, muts_bed->muts[i].end - muts_bed->muts[i].start);
+                      } else {
+                          mut_add_ins(opt, ret[0], ret[1], muts_bed->muts[i].start, c, hap, muts_bed->muts[i].bases, 0);
                       }
                   }
               }
-              else if (DELETE == muts_bed->muts[i].type) {
-                  for (j = muts_bed->muts[i].start; j < muts_bed->muts[i].end; ++j) { // for each base
-                      c = (mut_t)nst_nt4_table[(int)seq->s[j]];
-                      if (1 == is_hom) {
-                          ret[0]->s[j] = ret[1]->s[j] = DELETE|c;
-                      } else { // het-del
-                          ret[which_hap]->s[j] = DELETE|c;
-                      }
-                  }
+              else if (contig_i < muts_bed->muts[i].contig) {
+                  break;
               }
-              else if (INSERT == muts_bed->muts[i].type) {
-                  c = (mut_t)nst_nt4_table[(int)seq->s[muts_bed->muts[i].start]];
-                  if (0 == has_bases) {
-                      mut_add_ins(opt, ret[0], ret[1], muts_bed->muts[i].start, c, hap, NULL, muts_bed->muts[i].end - muts_bed->muts[i].start);
-                  } else {
-                      mut_add_ins(opt, ret[0], ret[1], muts_bed->muts[i].start, c, hap, muts_bed->muts[i].bases, 0);
+          }
+      }
+      else if(MUT_INPUT_TXT == muts_input->type) { // BED
+          muts_txt_t *muts_txt = muts_input->data.txt; 
+          // seed
+          for (i = 0; i < seq->l; ++i) {
+              ret[0]->s[i] = ret[1]->s[i] = (mut_t)nst_nt4_table[(int)seq->s[i]];
+          }
+          for (i =0; i < muts_txt->n; ++i) {
+              if (muts_txt->muts[i].contig == contig_i) {
+                  int8_t type = muts_txt->muts[i].type;
+                  uint32_t pos = muts_txt->muts[i].pos;
+                  int8_t is_hap = muts_txt->muts[i].is_hap;
+                  mut_t c = (mut_t)nst_nt4_table[(int)seq->s[pos-1]];
+
+                  if (DELETE == type) {
+                      if (is_hap & 1) ret[0]->s[pos-1] |= DELETE|c;
+                      if (is_hap & 2) ret[1]->s[pos-1] |= DELETE|c;
+                  }
+                  else if (SUBSTITUTE == type) {
+                      if (is_hap & 1) ret[0]->s[pos-1] = SUBSTITUTE|nst_nt4_table[(int)muts_txt->muts[i].bases[0]];
+                      if (is_hap & 2) ret[1]->s[pos-1] = SUBSTITUTE|nst_nt4_table[(int)muts_txt->muts[i].bases[0]];
+                  }
+                  else if (INSERT == type) {
+                      mut_add_ins(opt, ret[0], ret[1], i, c, is_hap, muts_txt->muts[i].bases, 0);
                   }
               }
           }
-          else if (contig_i < muts_bed->muts[i].contig) {
-              break;
-          }
+      }
+      else {
+          fprintf(stderr, "Error: unknown mutation input type!\n");
+          exit(1);
       }
   }
 
