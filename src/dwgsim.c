@@ -209,6 +209,31 @@ char iupac_and_base_to_mut(char iupac, char base)
   return 'X';
 }
 
+char bases_to_iupac(char b1, char b2)
+{
+  int32_t a1, a2, n;
+  a1 = nst_nt4_table[(int)b1];
+  a2 = nst_nt4_table[(int)b2];
+  if(4 == a1 || 4 == a2) return 'X';
+  if(a1 == b1) return 'X';
+  if(a1 < a2) {
+      n = a1 + (a2 << 2);
+  }
+  else {
+      n = a2 + (a1 << 2);
+  }
+  switch(n) {
+    case 4: return 'M'; // 0 + 4*1 = M
+    case 8: return 'R'; // 0 + 4*2 = R
+    case 12: return 'W'; // 0 + 4*3 = W
+    case 9: return 'S'; // 1 + 4*2 = S
+    case 13: return 'Y'; // 1 + 4*3 = Y
+    case 14: return 'K'; // 2 + 4*3 = K
+    default: break;
+  }
+  return 'X';
+}
+
 /* Error-checking open, copied from utils.c */
 #define xopen(fn, mode) err_xopen_core(__func__, fn, mode)
 
@@ -401,11 +426,9 @@ void dwgsim_core(dwgsim_opt_t * opt)
   int32_t tmp_seq_mem[2]={0,0};
   int64_t n_sim = 0;
   error_t *e[2]={NULL,NULL};
-  FILE *fp_muts_txt = NULL;
-  FILE *fp_muts_bed = NULL;
+  FILE *fp_muts_input = NULL;
   FILE *fp_regions_bed = NULL;
-  muts_txt_t *muts_txt = NULL;
-  muts_bed_t *muts_bed = NULL;
+  muts_input_t *muts_input = NULL;
   regions_bed_txt *regions_bed = NULL;
   contigs_t *contigs = NULL;
 
@@ -424,15 +447,11 @@ void dwgsim_core(dwgsim_opt_t * opt)
   }
   tmp_seq_mem[0] = tmp_seq_mem[1] = l+2;
   size[0] = opt->length[0]; size[1] = opt->length[1];
-
-  if(NULL != opt->fn_muts_txt) {
-      fp_muts_txt = xopen(opt->fn_muts_txt, "r");
+  
+  if(0 <= opt->fn_muts_input_type) {
       contigs = contigs_init();
   }
-  if(NULL != opt->fn_muts_bed) {
-      fp_muts_bed = xopen(opt->fn_muts_bed, "r");
-      contigs = contigs_init();
-  }
+  
   if(NULL != opt->fn_regions_bed) {
       fp_regions_bed = xopen(opt->fn_regions_bed, "r");
       if(NULL == contigs) contigs = contigs_init();
@@ -463,12 +482,11 @@ void dwgsim_core(dwgsim_opt_t * opt)
   fprintf(stderr, "[dwgsim_core] %d sequences, total length: %llu\n", n_ref, (long long)tot_len);
   rewind(opt->fp_fa);
 
-  if(NULL != opt->fn_muts_txt) {
-      muts_txt = muts_txt_init(fp_muts_txt, contigs); // read in the mutation file
+  if(0 <= opt->fn_muts_input_type) {
+      fp_muts_input = xopen(opt->fn_muts_input, "r");
+      muts_input = muts_input_init(fp_muts_input, contigs, opt->fn_muts_input_type); // read in the mutation file
   }
-  else if(NULL != opt->fn_muts_bed) {
-      muts_bed = muts_bed_init(fp_muts_bed, contigs); // read in the BED
-  }
+  
   if(NULL != opt->fn_regions_bed) {
       regions_bed = regions_bed_init(fp_regions_bed, contigs);
       // recalculate the total length
@@ -536,7 +554,7 @@ void dwgsim_core(dwgsim_opt_t * opt)
 
       // generate mutations and print them out
       mutseq[0] = mutseq_init(); mutseq[1] = mutseq_init();
-      mut_diref(opt, &seq, mutseq[0], mutseq[1], contig_i, muts_txt, muts_bed);
+      mut_diref(opt, &seq, mutseq[0], mutseq[1], contig_i, muts_input);
       mut_print(name, &seq, mutseq[0], mutseq[1], opt->fp_mut);
 
       for (ii = 0; ii != n_pairs; ++ii, ++ctr) { // the core loop
@@ -908,13 +926,8 @@ void dwgsim_core(dwgsim_opt_t * opt)
   if(IONTORRENT == opt->data_type) {
       free(tmp_seq_flow_mask[0]); free(tmp_seq_flow_mask[1]);
   }
-  if(NULL != opt->fn_muts_txt) {
-      muts_txt_destroy(muts_txt);
-      fclose(fp_muts_txt);
-  }
-  if(NULL != opt->fn_muts_bed) {
-      muts_bed_destroy(muts_bed);
-      fclose(fp_muts_bed);
+  if(0 <= opt->fn_muts_input_type) {
+      muts_input_destroy(muts_input);
   }
   if(NULL != opt->fn_regions_bed) {
       regions_bed_destroy(regions_bed);

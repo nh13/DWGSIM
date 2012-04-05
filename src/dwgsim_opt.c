@@ -59,8 +59,8 @@ dwgsim_opt_t* dwgsim_opt_init()
   opt->use_base_error = 0;
   opt->seed = -1;
   opt->fixed_quality = NULL;
-  opt->fn_muts_txt = NULL;
-  opt->fn_muts_bed = NULL;
+  opt->fn_muts_input = NULL;
+  opt->fn_muts_input_type = -1;
   opt->fn_regions_bed = NULL;
   opt->fp_mut = opt->fp_bfast = opt->fp_bwa1 = opt->fp_bwa2 = NULL;
   opt->fp_fa = opt->fp_fai = NULL;
@@ -72,8 +72,7 @@ dwgsim_opt_t* dwgsim_opt_init()
 void dwgsim_opt_destroy(dwgsim_opt_t *opt)
 {
   free(opt->fixed_quality);
-  free(opt->fn_muts_txt);
-  free(opt->fn_muts_bed);
+  free(opt->fn_muts_input);
   free(opt->fn_regions_bed);
   free(opt->flow_order);
   free(opt->read_prefix);
@@ -115,8 +114,9 @@ int dwgsim_opt_usage(dwgsim_opt_t *opt)
   fprintf(stderr, "         -B            use a per-base error rate for Ion Torrent data [%s]\n", __IS_TRUE(opt->use_base_error));
   fprintf(stderr, "         -H            haploid mode [%s]\n", __IS_TRUE(opt->is_hap));
   fprintf(stderr, "         -z INT        random seed (-1 uses the current time) [%d]\n", opt->seed);
-  fprintf(stderr, "         -m FILE       the mutations txt file to re-create [%s]\n", (NULL == opt->fn_muts_txt) ? "not using" : opt->fn_muts_txt);
-  fprintf(stderr, "         -b FILE       the bed-like set of candidate mutations [%s]\n", (NULL == opt->fn_muts_bed) ? "not using" : opt->fn_muts_bed);
+  fprintf(stderr, "         -m FILE       the mutations txt file to re-create [%s]\n", (MUT_INPUT_TXT != opt->fn_muts_input_type) ? "not using" : opt->fn_muts_input);
+  fprintf(stderr, "         -b FILE       the bed-like file set of candidate mutations [%s]\n", (MUT_INPUT_BED == opt->fn_muts_input_type) ? "not using" : opt->fn_muts_input);
+  fprintf(stderr, "         -v FILE       the vcf file set of candidate mutations [%s]\n", (MUT_INPUT_VCF == opt->fn_muts_input_type) ? "not using" : opt->fn_muts_input);
   fprintf(stderr, "         -x FILE       the bed of regions to cover [%s]\n", (NULL == opt->fn_regions_bed) ? "not using" : opt->fn_regions_bed);
   fprintf(stderr, "         -P STRING     a read prefix to prepend to each read name [%s]\n", (NULL == opt->read_prefix) ? "not using" : opt->read_prefix);
   fprintf(stderr, "         -q STRING     a fixed base quality to apply (single character) [%s]\n", (NULL == opt->fixed_quality) ? "not using" : opt->fixed_quality);
@@ -154,8 +154,9 @@ dwgsim_opt_parse(dwgsim_opt_t *opt, int argc, char *argv[])
 {
   int32_t i;
   int c;
+  int muts_input_type = 0;
   
-  while ((c = getopt(argc, argv, "d:s:N:C:1:2:e:E:r:R:X:I:c:S:n:y:BHf:z:m:b:x:P:q:h")) >= 0) {
+  while ((c = getopt(argc, argv, "d:s:N:C:1:2:e:E:r:R:X:I:c:S:n:y:BHf:z:m:b:v:x:P:q:h")) >= 0) {
       switch (c) {
         case 'd': opt->dist = atoi(optarg); break;
         case 's': opt->std_dev = atof(optarg); break;
@@ -181,8 +182,9 @@ dwgsim_opt_parse(dwgsim_opt_t *opt, int argc, char *argv[])
         case 'H': opt->is_hap = 1; break;
         case 'h': return 0;
         case 'z': opt->seed = atoi(optarg); break;
-        case 'm': free(opt->fn_muts_txt); opt->fn_muts_txt = strdup(optarg); break;
-        case 'b': free(opt->fn_muts_bed); opt->fn_muts_bed = strdup(optarg); break;
+        case 'm': free(opt->fn_muts_input); opt->fn_muts_input = strdup(optarg); opt->fn_muts_input_type = MUT_INPUT_TXT; muts_input_type |= 0x1; break;
+        case 'b': free(opt->fn_muts_input); opt->fn_muts_input = strdup(optarg); opt->fn_muts_input_type = MUT_INPUT_BED; muts_input_type |= 0x2; break;
+        case 'v': free(opt->fn_muts_input); opt->fn_muts_input = strdup(optarg); opt->fn_muts_input_type = MUT_INPUT_VCF; muts_input_type |= 0x4; break;
         case 'x': free(opt->fn_regions_bed); opt->fn_regions_bed = strdup(optarg); break;
         case 'P': free(opt->read_prefix); opt->read_prefix = strdup(optarg); break;
         case 'q': opt->fixed_quality = strdup(optarg); break;
@@ -252,9 +254,16 @@ dwgsim_opt_parse(dwgsim_opt_t *opt, int argc, char *argv[])
       fprintf(stderr, "Warning: remember to use the -P option with dwgsim_eval\n");
   }
   
-  if(NULL != opt->fn_muts_txt && NULL != opt->fn_muts_bed) {
-      fprintf(stderr, "Error: -m and -b cannot be used together\n");
+  switch(muts_input_type) {
+    case 0x0:
+    case 0x1:
+    case 0x2:
+    case 0x4:
+      break;
+    default:
+      fprintf(stderr, "Error: -m/-b/-v cannot be used together\n");
       return 0;
+      break;
   }
   
   // random seed

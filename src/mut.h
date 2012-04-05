@@ -4,6 +4,7 @@
 #include "contigs.h"
 #include "mut_txt.h"
 #include "mut_bed.h"
+#include "mut_input.h"
 #include "dwgsim_opt.h"
 #include "dwgsim.h"
 
@@ -63,7 +64,7 @@ int32_t
 mut_get_ins(mutseq_t *seq, int32_t i, mut_t *n, mut_t *ins);
 
 void 
-mut_diref(dwgsim_opt_t *opt, const seq_t *seq, mutseq_t *hap1, mutseq_t *hap2, int32_t contig_i, muts_txt_t *muts_txt, muts_bed_t *muts_bed);
+mut_diref(dwgsim_opt_t *opt, const seq_t *seq, mutseq_t *hap1, mutseq_t *hap2, int32_t contig_i, muts_input_t *muts_input);
 
 // Columns:
 // 1 - chromosome name
