@@ -192,14 +192,6 @@ muts_vcf_t *muts_vcf_init(FILE *fp, contigs_t *c)
                   m->muts[m->n].bases = malloc(sizeof(char) * 2);
                   m->muts[m->n].bases[0] = alt[j];
                   m->muts[m->n].bases[1] = '\0';
-                  if(is_hap < 3) {
-                      m->muts[m->n].bases[0] = bases_to_iupac(alt[j], ref[j]);
-                      if('X' == m->muts[m->n].bases[0]) {
-                          fprintf(stderr, "Error: IUPAC out of range\n");
-                          exit(1);
-                      }
-                      m->muts[m->n].bases[1] = '\0';
-                  }
                   m->n++;
               }
           }
@@ -212,6 +204,7 @@ muts_vcf_t *muts_vcf_init(FILE *fp, contigs_t *c)
               for(j=0;j<ref_l;j++,pos++) {
                   if(ref[j] != alt[j]) break;
               }
+              //pos--; // make 0-based for INS
               m->muts[m->n].contig = i;
               m->muts[m->n].pos = pos;
               m->muts[m->n].type = INSERT;
