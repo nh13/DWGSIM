@@ -63,7 +63,7 @@ muts_vcf_t *muts_vcf_init(FILE *fp, contigs_t *c)
   // read in some buffer
   n_read = fread(buffer, sizeof(char), BUFFER_L, fp);
 
-  i = s = 0;
+  i = s = n = 0;
   while(0 != s || 0 != n_read) {
       len = n_read + s;
       s = 0;
