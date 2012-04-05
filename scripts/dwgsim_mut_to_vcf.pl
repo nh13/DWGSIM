@@ -48,7 +48,7 @@ while(defined(my $line = <FH>)) {
 			$del_name = ""; $del_pos = -1; $del_ref = "";
 		}
 		if("-" eq $alt) { # DEL
-			if(0 < $del_n && $prev_pos + 1 == $pos && $s == $del_s) {
+			if(0 < $del_n && $del_pos + $del_n == $pos && $s == $del_s) {
 				$del_n++;
 				$del_ref .= $ref;
 			}
@@ -88,6 +88,8 @@ while(defined(my $line = <FH>)) {
 					$name, $pos, $ref, $alt, $s);
 			}
 		}
+		$prev_name = $name;
+		$prev_pos = $pos;
 	}
 	else {
 		die "Input file is not in the proper format.\n";
