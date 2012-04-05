@@ -3,7 +3,7 @@ CC=			gcc
 CFLAGS=		-g -Wall -O2 #-m64 #-arch ppc
 DFLAGS=		-D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE -DPACKAGE_VERSION=\\\"${PACKAGE_VERSION}\\\"
 DWGSIM_AOBJS = src/dwgsim_opt.o src/mut.o src/contigs.o src/regions_bed.o \
-			   src/mut_txt.o src/mut_bed.o src/mut_input.o src/dwgsim.o
+			   src/mut_txt.o src/mut_bed.o src/mut_vcf.o src/mut_input.o src/dwgsim.o
 DWGSIM_EVAL_AOBJS = src/dwgsim_eval.o \
 					samtools/knetfile.o \
 					samtools/bgzf.o samtools/kstring.o samtools/bam_aux.o samtools/bam.o samtools/bam_import.o samtools/sam.o samtools/bam_index.o \

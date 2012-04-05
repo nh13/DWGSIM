@@ -16,6 +16,8 @@ enum data_type_t {
 
 char iupac_and_base_to_mut(char iupac, char base);
 
+char bases_to_iupac(char b1, char b2);
+
 int32_t get_muttype(char *str);
 
 int32_t

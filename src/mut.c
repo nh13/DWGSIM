@@ -620,8 +620,14 @@ void mut_diref(dwgsim_opt_t *opt, const seq_t *seq, mutseq_t *hap1, mutseq_t *ha
               }
           }
       }
-      else if(MUT_INPUT_TXT == muts_input->type) { // BED
-          muts_txt_t *muts_txt = muts_input->data.txt; 
+      else if(MUT_INPUT_TXT == muts_input->type || MUT_INPUT_VCF == muts_input->type) { // TXT or VCF
+          muts_txt_t *muts_txt = NULL;
+          if(MUT_INPUT_TXT == muts_input->type) {
+              muts_txt = muts_input->data.txt; 
+          }
+          else {
+              muts_txt = muts_input->data.vcf; 
+          }
           // seed
           for (i = 0; i < seq->l; ++i) {
               ret[0]->s[i] = ret[1]->s[i] = (mut_t)nst_nt4_table[(int)seq->s[i]];

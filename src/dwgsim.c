@@ -209,6 +209,31 @@ char iupac_and_base_to_mut(char iupac, char base)
   return 'X';
 }
 
+char bases_to_iupac(char b1, char b2)
+{
+  int32_t a1, a2, n;
+  a1 = nst_nt4_table[(int)b1];
+  a2 = nst_nt4_table[(int)b2];
+  if(4 == a1 || 4 == a2) return 'X';
+  if(a1 == b1) return 'X';
+  if(a1 < a2) {
+      n = a1 + (a2 << 2);
+  }
+  else {
+      n = a2 + (a1 << 2);
+  }
+  switch(n) {
+    case 4: return 'M'; // 0 + 4*1 = M
+    case 8: return 'R'; // 0 + 4*2 = R
+    case 12: return 'W'; // 0 + 4*3 = W
+    case 9: return 'S'; // 1 + 4*2 = S
+    case 13: return 'Y'; // 1 + 4*3 = Y
+    case 14: return 'K'; // 2 + 4*3 = K
+    default: break;
+  }
+  return 'X';
+}
+
 /* Error-checking open, copied from utils.c */
 #define xopen(fn, mode) err_xopen_core(__func__, fn, mode)
 
