@@ -831,6 +831,9 @@ void dwgsim_core(dwgsim_opt_t * opt)
                       qstr = realloc(qstr, (1+qstr_l) * sizeof(char));
                   }
                   // get random sequence
+                  for (i = 0; i < s[j]; ++i) {
+                      tmp_seq[j][i] = (int)(drand48() * 4.0) & 3;
+                  }
                   if(NULL != opt->fixed_quality) {
                       for (i = 0; i < s[j]; ++i) {
                           qstr[i] = opt->fixed_quality[0];
