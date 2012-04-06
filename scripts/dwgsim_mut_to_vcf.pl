@@ -31,8 +31,10 @@ my $del_name = "";
 my $del_pos = -1;
 my $del_ref = "";
 my $del_s = -1;
+my $line_n = 0;
 while(defined(my $line = <FH>)) {
 	if($line =~ m/^(.+)\t(\d+)\t(.+)\t(.+)\t(\d+)$/) {
+        $line_n++;
 		my $name = $1;
 		my $pos = $2;
 		my $ref = $3;
@@ -80,7 +82,7 @@ while(defined(my $line = <FH>)) {
 			else { # SUB
 				if(3 != $s) {
 					if(!defined($to_alt{"$ref"."$alt"})) {
-						die "Could not convert $ref$alt".".\n";
+						die "Could not convert $ref$alt"." on $line_n.\n";
 					}
 					$alt = $to_alt{"$ref"."$alt"};
 				}
