@@ -315,6 +315,8 @@ void mut_debug(const seq_t *seq, mutseq_t *hap1, mutseq_t *hap2)
       if ((c[1] & mutmsk) != NOCHANGE || (c[2] & mutmsk) != NOCHANGE) {
           if ((c[1] & mut_and_type_mask) == (c[2] & mut_and_type_mask)) { // hom
               if ((c[1]&mutmsk) == SUBSTITUTE) { // substitution
+                  assert((c[1]&0x3) == (c[2]&0x3));
+                  assert((c[0]&0x3) != (c[1]&0x3));
                   continue;
               } else if ((c[1]&mutmsk) == DELETE) { // del
                   continue;
@@ -327,6 +329,9 @@ void mut_debug(const seq_t *seq, mutseq_t *hap1, mutseq_t *hap2)
               } else assert(0);
           } else { // het
               if ((c[1]&mutmsk) == SUBSTITUTE || (c[2]&mutmsk) == SUBSTITUTE) { // substitution
+                  assert((c[1]&0x3) != (c[2]&0x3));
+                  assert((c[0]&0x3) == (c[1]&0x3) || (c[0]&0x3) == (c[2]&0x3));
+                  assert((c[0]&0x3) != (c[1]&0x3) || (c[0]&0x3) != (c[2]&0x3));
                   continue;
               } else if ((c[1]&mutmsk) == DELETE) {
                   continue;
@@ -356,6 +361,7 @@ mut_left_justify_ins(mutseq_t *hap1, int32_t i)
       j=i;
       while(0 < j
             && INSERT != (hap1->s[j-1]&mutmsk) // no insertion
+            && SUBSTITUTE != (hap1->s[j-1]&mutmsk) // no substitution
             && DELETE != (hap1->s[j-1]&mutmsk) // no deletion 
             && ((ins >> ((n-1) << 1)) & 3) == (hap1->s[j-1]&3)) { // end of insertion matches previous base
           // update ins
@@ -373,6 +379,7 @@ mut_left_justify_ins(mutseq_t *hap1, int32_t i)
       j=i;
       while(0 < j
             && INSERT != (hap1->s[j-1]&mutmsk) // no insertion
+            && SUBSTITUTE != (hap1->s[j-1]&mutmsk) // no substitution
             && DELETE != (hap1->s[j-1]&mutmsk) // no deletion 
             && ((hap1->ins[ins][1] >> 6) & 3) == (hap1->s[j-1]&3)) { // end of insertion matches previous base
           // update ins
@@ -452,6 +459,7 @@ mut_left_justify(const seq_t *seq, mutseq_t *hap1, mutseq_t *hap2)
                   // left-justify
                   for(j=i-1;0 < i && 0<=j;j--) {
                       if(INSERT != (hap1->s[j]&mutmsk) // no insertion
+                         && SUBSTITUTE != (hap1->s[j]&mutmsk) // no substitution
                          && DELETE != (hap1->s[j]&mutmsk) // no deletion 
                          && (hap1->s[j]&3) == (hap1->s[j+del_length]&3))  { // hap1 bases match
                           // shift and make it NOCHANGE
@@ -473,6 +481,7 @@ mut_left_justify(const seq_t *seq, mutseq_t *hap1, mutseq_t *hap2)
                   // left-justify
                   for(j=i-1;0 < i && 0<=j;j--) {
                       if(INSERT != (hap2->s[j]&mutmsk) // no insertion
+                         && SUBSTITUTE != (hap2->s[j]&mutmsk) // no substitution
                          && DELETE != (hap2->s[j]&mutmsk) // no deletion 
                          && (hap2->s[j]&3) == (hap2->s[j+del_length]&3))  { // hap2 bases match
                           // shift and make it NOCHANGE
