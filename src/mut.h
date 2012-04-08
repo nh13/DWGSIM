@@ -55,7 +55,11 @@ mutseq_init();
 void
 mutseq_destroy(mutseq_t *seq);
 
-#define mut_get_ins_bytes(_num_ins) (1 + ((_num_ins + 3) >> 2))
+inline int32_t
+mut_get_ins_bytes(int32_t n);
+
+inline uint8_t*
+mut_get_ins_long_n(uint8_t *ins, uint32_t *n);
 
 mut_t
 mut_get_ins_length(mutseq_t *seq, int32_t i);
@@ -74,5 +78,12 @@ mut_diref(dwgsim_opt_t *opt, const seq_t *seq, mutseq_t *hap1, mutseq_t *hap2, i
 // 5 - '-' for homozygous, '+' for heterozygous
 void 
 mut_print(const char *name, const seq_t *seq, mutseq_t *hap1, mutseq_t *hap2, FILE *fpout);
+
+// 0 - 0
+// 1 - 1
+// 5 - 2
+// 9 - 3
+// ...
+#define mut_packed_len(_n) ((_n + 3) >> 2)
 
 #endif

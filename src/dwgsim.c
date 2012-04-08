@@ -110,12 +110,14 @@ uint8_t nst_nt4_table[256] = {
                 } \
             } else { \
                 int32_t byte_index, bit_index; \
-                n = currseq->ins[ins][0]; \
+                uint32_t num_ins; \
+                uint8_t *insertion = NULL; \
+                insertion = mut_get_ins_long_n(currseq->ins[ins], &num_ins); \
                 if(0 == strand[x]) { \
-                    byte_index = mut_get_ins_bytes(n)-1; bit_index = n & 3; \
-                    while(n > 0 && k < s[x]) { \
-                        tmp_seq[x][k++] = (currseq->ins[ins][byte_index] >> (bit_index << 1)) & 0x3;                \
-                        --n, ins >>= 2; \
+                    byte_index = mut_packed_len(num_ins)-1; bit_index = num_ins & 3; \
+                    while(num_ins > 0 && k < s[x]) { \
+                        tmp_seq[x][k++] = (insertion[byte_index] >> (bit_index << 1)) & 0x3;                \
+                        --num_ins, ins >>= 2; \
                         bit_index--; \
                         if (bit_index < 0) { \
                             bit_index = 3; \
@@ -125,11 +127,11 @@ uint8_t nst_nt4_table[256] = {
                     if(k < s[x]) tmp_seq[x][k++] = c & 0xf;						\
                 } else { \
                     tmp_seq[x][k++] = c & 0xf;						\
-                    byte_index = 1; bit_index = 0; \
-                    while(n > 0 && k < s[x]) { \
+                    byte_index = 0; bit_index = 0; \
+                    while(num_ins > 0 && k < s[x]) { \
                         ext_coor[x]++; \
-                        tmp_seq[x][k++] = (currseq->ins[ins][byte_index] >> (bit_index << 1)) & 0x3;                \
-                        --n; \
+                        tmp_seq[x][k++] = (insertion[byte_index] >> (bit_index << 1)) & 0x3;                \
+                        --num_ins; \
                         bit_index++; \
                         if (4 == bit_index) { \
                             bit_index = 0; \

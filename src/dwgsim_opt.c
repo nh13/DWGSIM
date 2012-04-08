@@ -125,7 +125,7 @@ int dwgsim_opt_usage(dwgsim_opt_t *opt)
   fprintf(stderr, "Note: For SOLiD mate pair reads and BFAST, the first read is F3 and the second is R3. For SOLiD mate pair reads\n");
   fprintf(stderr, "and BWA, the reads in the first file are R3 the reads annotated as the first read etc.\n");
   fprintf(stderr, "\n");
-  fprintf(stderr, "Note: The longest supported insertion is %d.\n", 255);
+  fprintf(stderr, "Note: The longest supported insertion is %u.\n", UINT32_MAX);
   fprintf(stderr, "\n");
   return 1;
 }

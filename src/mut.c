@@ -105,7 +105,7 @@ mutseq_init_bounds()
   ins_length_shift = 59; // bits 60-64 store the insertion length
   ins_length_mask = 0x1F; // bits 60-64 store the insertion length
   ins_length_max = ((ins_length_shift - muttype_shift) >> 1);
-  ins_long_length_max = UINT8_MAX;
+  ins_long_length_max = UINT32_MAX;
   if(ins_length_mask < ins_length_max) { // we exceed storing the length of the indel
       ins_length_max = ins_length_mask;
   }
@@ -146,9 +146,11 @@ mut_get_ins_length(mutseq_t *seq, int32_t i)
   assert(INSERT == (m & mutmsk));
   n = (m >> ins_length_shift) & ins_length_mask;
   if(0 == n) {
+      uint32_t l = 0;
       index = (m >> muttype_shift) & ins_mask;
       assert(0 <= index && index < seq->ins_l);
-      return (mut_t)(seq->ins[index][0]);
+      mut_get_ins_long_n(seq->ins[index], &l);
+      return (mut_t)l;
   }
   else {
       return n;
@@ -178,6 +180,72 @@ mut_get_ins(mutseq_t *seq, int32_t i, mut_t *n, mut_t *ins)
   }
 }
 
+inline int32_t
+mut_get_ins_bytes(int32_t n)
+{
+  int32_t num_bytes = 1; // one-byte for the type
+  // variable number of bytes to store the length
+  if(n <= UINT8_MAX) num_bytes += sizeof(uint8_t); 
+  else if(n <= UINT16_MAX) num_bytes += sizeof(uint16_t); 
+  else if(n <= UINT32_MAX) num_bytes += sizeof(uint32_t); 
+  else {
+      fprintf(stderr, "UINT32_MAX < n");
+      exit(1);
+  }
+  // store the insertion
+  num_bytes += mut_packed_len(n);
+  return num_bytes;
+}
+
+inline uint8_t*
+mut_get_ins_long_n(uint8_t *ins, uint32_t *n)
+{
+  switch(ins[0]) {
+    case sizeof(uint8_t):
+      (*n) = (uint32_t)(ins[1]);
+      return ins + 2;
+      break;
+    case sizeof(uint16_t):
+      (*n) = (uint32_t)(((uint16_t*)(ins+1))[0]);
+      return ins + 3;
+      break;
+    case sizeof(uint32_t):
+    default:
+      (*n) = (uint32_t)(((uint32_t*)(ins+1))[0]);
+      return ins + 5;
+      break;
+  }
+  return NULL;
+}
+
+inline uint8_t*
+mut_set_ins_long_n(uint8_t *ins, uint32_t n)
+{
+  // set type
+  if(n <= UINT8_MAX) ins[0] = (uint8_t)sizeof(uint8_t);
+  else if(n <= UINT16_MAX) ins[0] = (uint8_t)sizeof(uint16_t);
+  else ins[0] = (uint8_t)sizeof(uint32_t);
+      
+  // set length
+  switch(ins[0]) {
+    case sizeof(uint8_t):
+      ins[1] = (uint8_t)n;
+      return ins + 2;
+      break;
+    case sizeof(uint16_t):
+      (*((uint16_t*)(ins+1))) = (uint16_t)n;
+      return ins + 3;
+      break;
+    case sizeof(uint32_t):
+    default:
+      (*((uint32_t*)(ins+1))) = n;
+      return ins + 5;
+      break;
+  }
+  return NULL;
+}
+
+
 static inline void
 mut_print_ins(FILE *fp, mutseq_t *seq, int32_t i)
 {
@@ -191,19 +259,21 @@ mut_print_ins(FILE *fp, mutseq_t *seq, int32_t i)
   }
   else { // long insertion
       int32_t byte_index, bit_index;
+      uint32_t num_ins = 0;
+      uint8_t *insertion = NULL;
       assert(NULL != seq->ins[ins]);
-      n = seq->ins[ins][0]; // long insertion length
+      insertion = mut_get_ins_long_n(seq->ins[ins], &num_ins);
       // reverse order
-      byte_index = mut_get_ins_bytes(n) - 1;
-      bit_index = (n+3) & 3; // % 4
-      while(0 < n) {
-          fputc("ACGTN"[(seq->ins[ins][byte_index] >> (bit_index << 1)) & 0x3], fp);
+      byte_index = mut_packed_len(num_ins)-1;
+      bit_index = (num_ins+3) & 3; // % 4
+      while(0 < num_ins) {
+          fputc("ACGTN"[(insertion[byte_index] >> (bit_index << 1)) & 0x3], fp);
           bit_index--;
           if(bit_index < 0) {
               bit_index = 3;
               byte_index--;
           }
-          n--;
+          num_ins--;
       }
   }
 }
@@ -253,26 +323,24 @@ void mut_add_ins(dwgsim_opt_t *opt, mutseq_t *hap1, mutseq_t *hap2, int32_t i, i
       if (hap & 0x2) hap2->s[i] = (num_ins << ins_length_shift) | (ins << muttype_shift) | INSERT | c;
   } else { // long
       int32_t byte_index, bit_index;
-      int32_t hap1_byte_l=0, hap2_byte_l=0; 
+      uint8_t *hap1_ins = NULL, *hap2_ins = NULL;
       if (hap & 0x1) {
           while (hap1->ins_m <= hap1->ins_l) { // realloc
               hap1->ins_m = (hap1->ins_m < 16) ? 16 : (hap1->ins_m << 1); 
               hap1->ins = realloc(hap1->ins, sizeof(uint8_t*) * hap1->ins_m);
           }
-          hap1_byte_l = mut_get_ins_bytes(num_ins);
           hap1->ins[hap1->ins_l] = calloc(mut_get_ins_bytes(num_ins), sizeof(uint8_t));
-          hap1->ins[hap1->ins_l][0] = num_ins;
+          hap1_ins = mut_set_ins_long_n(hap1->ins[hap1->ins_l], num_ins); 
       }
       if (hap & 0x2) {
           while (hap2->ins_m <= hap2->ins_l) { // realloc
               hap2->ins_m = (hap2->ins_m < 16) ? 16 : (hap2->ins_m << 1); 
               hap2->ins = realloc(hap2->ins, sizeof(uint8_t*) * hap2->ins_m);
           }
-          hap2_byte_l = mut_get_ins_bytes(num_ins);
           hap2->ins[hap2->ins_l] = calloc(mut_get_ins_bytes(num_ins), sizeof(uint8_t));
-          hap2->ins[hap2->ins_l][0] = num_ins;
+          hap2_ins = mut_set_ins_long_n(hap2->ins[hap2->ins_l], num_ins); 
       }
-      byte_index = 1;
+      byte_index = 0;
       bit_index = 0;
       while(0 < num_ins) {
           uint8_t b;
@@ -281,8 +349,8 @@ void mut_add_ins(dwgsim_opt_t *opt, mutseq_t *hap1, mutseq_t *hap2, int32_t i, i
           } else {
               b = nst_nt4_table[(int)bases[num_ins-1]] << (bit_index << 1);
           }
-          if (hap & 0x1) hap1->ins[hap1->ins_l][byte_index] |= b;
-          if (hap & 0x2) hap2->ins[hap2->ins_l][byte_index] |= b;
+          if (hap & 0x1) hap1_ins[byte_index] |= b;
+          if (hap & 0x2) hap2_ins[byte_index] |= b;
           bit_index++;
           if(4 == bit_index) {
               bit_index=0;
@@ -374,22 +442,24 @@ mut_left_justify_ins(mutseq_t *hap1, int32_t i)
       hap1->s[j] = (n << ins_length_shift) | (ins << muttype_shift) | INSERT | (hap1->s[j]&3); // re-insert
   } else { // long
       int32_t byte_index;
-      n = hap1->ins[ins][0]; // get the long insertion length
-      assert(n > 0);
+      uint32_t num_ins;
+      uint8_t *insertion = NULL;
+      insertion = mut_get_ins_long_n(hap1->ins[ins], &num_ins);
+      assert(num_ins > 0);
       j=i;
       while(0 < j
             && INSERT != (hap1->s[j-1]&mutmsk) // no insertion
             && SUBSTITUTE != (hap1->s[j-1]&mutmsk) // no substitution
             && DELETE != (hap1->s[j-1]&mutmsk) // no deletion 
-            && ((hap1->ins[ins][1] >> 6) & 3) == (hap1->s[j-1]&3)) { // end of insertion matches previous base
+            && ((insertion[0] >> 6) & 3) == (hap1->s[j-1]&3)) { // end of insertion matches previous base
           // update ins
-          for (byte_index = 1; byte_index < mut_get_ins_bytes(n); byte_index++) {
-              hap1->ins[ins][byte_index] <<= 2; // shift over
-              if (byte_index+1 < mut_get_ins_bytes(n)) { // copy over from next byte 
-                  hap1->ins[ins][byte_index] |= (hap1->ins[ins][byte_index+1] >> 6) & 3; 
+          for (byte_index = 0; byte_index < mut_packed_len(num_ins); byte_index++) {
+              insertion[byte_index] <<= 2; // shift over
+              if (byte_index+1 < mut_packed_len(num_ins)) { // copy over from next byte 
+                  insertion[byte_index] |= (insertion[byte_index+1] >> 6) & 3; 
               }
           }
-          hap1->ins[ins][mut_get_ins_bytes(n)-1] |= (hap1->s[j]&3) << ((n & 3) << 1); // insert first base
+          insertion[mut_packed_len(num_ins)-1] |= (hap1->s[j]&3) << ((num_ins & 3) << 1); // insert first base
           hap1->s[j] = (hap1->s[j]&3); // make it NOCHANGE
           j--;
       }
