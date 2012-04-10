@@ -86,7 +86,11 @@ muts_txt_t *muts_txt_init(FILE *fp, contigs_t *c)
       }
       else if('-' != ref && '-' != mut[0]) {
           m->muts[m->n].type = SUBSTITUTE;
-          if(is_hap < 3) {
+          if(is_hap < 3) { // heterozygous
+              if(nst_nt4_table[(int)m->muts[m->n].bases[0]] < 4) {
+                  fprintf(stderr, "Error: heterozygous bases must be in IUPAC form\n");
+                  exit(1);
+              }
               m->muts[m->n].bases[0] = iupac_and_base_to_mut(m->muts[m->n].bases[0], ref);
               if('X' == m->muts[m->n].bases[0]) {
                   fprintf(stderr, "Error: out of range\n");
