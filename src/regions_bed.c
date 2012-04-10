@@ -40,7 +40,7 @@ regions_bed_txt *regions_bed_init(FILE *fp, contigs_t *c)
   regions_bed_txt *r = NULL;
   char name[1024];
   uint32_t start, end, len;
-  int32_t i, prev_contig, prev_start, prev_end;
+  int32_t i, prev_contig, prev_start, prev_end, b;
 
   r = calloc(1, sizeof(regions_bed_txt));
   r->n = 0;
@@ -51,7 +51,8 @@ regions_bed_txt *regions_bed_init(FILE *fp, contigs_t *c)
   
   i = 0;
   prev_contig = prev_start = prev_end = -1;
-  while(0 < fscanf(fp, "%s\t%u\t%u\t%u", name, &start, &end, &len)) {
+  while(0 < fscanf(fp, "%s\t%u\t%u", name, &start, &end)) {
+      len = end - start + 1;
       // find the contig
       while(i < c->n && 0 != strcmp(name, c->contigs[i].name)) {
           i++;
@@ -101,6 +102,10 @@ regions_bed_txt *regions_bed_init(FILE *fp, contigs_t *c)
           r->start[r->n] = start;
           r->end[r->n] = end;
           r->n++;
+      }
+      // move to the end of the line
+      while(EOF != (b = fgetc(fp))) {
+          if('\n' == b || '\r' == b) break;
       }
   }
   return r;
