@@ -53,6 +53,7 @@ dwgsim_opt_t* dwgsim_opt_init()
   opt->indel_min = 1;
   opt->rand_read = 0.05;
   opt->data_type = ILLUMINA;
+  opt->strandedness = 0;
   opt->max_n = 0;
   opt->flow_order = NULL;
   opt->flow_order_len = 0;
