@@ -10,7 +10,7 @@ import pylab
 
 class Table:
 
-    def __init__(self, fn):
+    def __init__(self, fn, min_mapq):
         ncol = -1
 
         # read in the data
@@ -22,6 +22,8 @@ class Table:
                 continue
             else:
                 table = self.__parse(line)
+                if table[0] < min_mapq:
+                    continue
                 data.append(table)
                 if -1 == ncol:
                     ncol = len(table)
@@ -49,7 +51,7 @@ def main(options):
 
     # read in through the files
     for fn in options.fns:
-        table = Table(fn)
+        table = Table(fn, options.min_mapq)
         # extract specificity
         y = [table.matrix[i][17] for i in range(len(table.matrix))]
         # extract sensitivity 
@@ -90,6 +92,7 @@ if __name__ == '__main__':
     parser.add_option('--ylim', help="the y-axis range", dest="ylim")
     parser.add_option('--out', help="the output file", dest="out")
     parser.add_option('--outtype', help="the output file type (ex. pdf, png)", dest="outtype", default="pdf")
+    parser.add_option('--min-mapq', help="minimum mapping quality (inclusive)", dest="min_mapq", type=int, default=0)
     if len(sys.argv[1:]) < 1:
         parser.print_help()
     else:
