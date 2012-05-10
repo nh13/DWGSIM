@@ -76,20 +76,21 @@ def main(options):
     if None != options.ylim:
         nums = re.findall(r'\d+\.?\d*', options.ylim)
         if 2 == len(nums):
-            pylab.ylim(xmin=float(nums[0]), xmax=float(nums[1]))
+            pylab.ylim(ymin=float(nums[0]), ymax=float(nums[1]))
     # legend
-    if None != options.ids and len(options.fns) == len(options.ids):
-        pylab.legend(options.ids, title='IDs', loc='lower left')
-    elif options.infer_ids:
-        ids = list()
-        for fn in options.fns:
-            i = re.sub(r'^.*\/', '', fn)
-            i = re.sub(r'\.sam\.txt$', '', i)
-            i = re.sub(r'^out', '', i)
-            i = re.sub(r'^dwgsim_eval', '', i)
-            i = re.sub(r'^\.', '', i)
-            ids.append(i)
-        pylab.legend(ids, title='IDs', loc='lower left')
+    if not options.no_legend:
+        if None != options.ids and len(options.fns) == len(options.ids):
+            pylab.legend(options.ids, title='IDs', loc='lower left')
+        elif options.infer_ids:
+            ids = list()
+            for fn in options.fns:
+                i = re.sub(r'^.*\/', '', fn)
+                i = re.sub(r'\.sam\.txt$', '', i)
+                i = re.sub(r'^out', '', i)
+                i = re.sub(r'^dwgsim_eval', '', i)
+                i = re.sub(r'^\.', '', i)
+                ids.append(i)
+            pylab.legend(ids, title='IDs', loc='lower left')
     # show the plot
     if None == options.out:
         pylab.show()
@@ -111,6 +112,7 @@ if __name__ == '__main__':
     parser.add_option('--out', help="the output file", dest="out")
     parser.add_option('--outtype', help="the output file type (ex. pdf, png)", dest="outtype", default="pdf")
     parser.add_option('--min-mapq', help="minimum mapping quality (inclusive)", dest="min_mapq", type=int, default=0)
+    parser.add_option('--no-legend', help="do not add a legend to the plot", dest="no_legend", action="store_true", default=False)
     if len(sys.argv[1:]) < 1:
         parser.print_help()
     else:
