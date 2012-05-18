@@ -48,6 +48,7 @@ dwgsim_opt_t* dwgsim_opt_init()
   opt->C = 100;
   opt->length[0] = opt->length[1] = 70;
   opt->mut_rate = 0.001;
+  opt->mut_freq = 0.5;
   opt->indel_frac = 0.1;
   opt->indel_extend = 0.3;
   opt->indel_min = 1;
@@ -98,6 +99,9 @@ int dwgsim_opt_usage(dwgsim_opt_t *opt)
   fprintf(stderr, "         -1 INT        length of the first read [%d]\n", opt->length[0]);
   fprintf(stderr, "         -2 INT        length of the second read [%d]\n", opt->length[1]);
   fprintf(stderr, "         -r FLOAT      rate of mutations [%.4f]\n", opt->mut_rate);
+  fprintf(stderr, "         -F FLOAT      frequency of given mutation to simulate low fequency somatic mutations [%.4f]\n", opt->mut_freq);
+  fprintf(stderr, "                           NB: freqeuncy F refers to the first strand of mutation, therefore mutations \n"); 
+  fprintf(stderr, "                           on the second strand occour with a frequency of 1-F \n");
   fprintf(stderr, "         -R FLOAT      fraction of mutations that are indels [%.2f]\n", opt->indel_frac);
   fprintf(stderr, "         -X FLOAT      probability an indel is extended [%.2f]\n", opt->indel_extend);
   fprintf(stderr, "         -I INT        the minimum length indel [%d]\n", opt->indel_min);
@@ -157,7 +161,7 @@ dwgsim_opt_parse(dwgsim_opt_t *opt, int argc, char *argv[])
   int c;
   int muts_input_type = 0;
   
-  while ((c = getopt(argc, argv, "d:s:N:C:1:2:e:E:r:R:X:I:c:S:n:y:BHf:z:m:b:v:x:P:q:h")) >= 0) {
+  while ((c = getopt(argc, argv, "d:s:N:C:1:2:e:E:r:F:R:X:I:c:S:n:y:BHf:z:m:b:v:x:P:q:h")) >= 0) {
       switch (c) {
         case 'd': opt->dist = atoi(optarg); break;
         case 's': opt->std_dev = atof(optarg); break;
@@ -168,6 +172,7 @@ dwgsim_opt_parse(dwgsim_opt_t *opt, int argc, char *argv[])
         case 'e': get_error_rate(optarg, &opt->e[0]); break;
         case 'E': get_error_rate(optarg, &opt->e[1]); break;
         case 'r': opt->mut_rate = atof(optarg); break;
+        case 'F': opt->mut_freq = atof(optarg); break;
         case 'R': opt->indel_frac = atof(optarg); break;
         case 'X': opt->indel_extend = atof(optarg); break;
         case 'I': opt->indel_min = atoi(optarg); break;

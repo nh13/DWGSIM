@@ -615,7 +615,7 @@ void dwgsim_core(dwgsim_opt_t * opt)
               }
 
               // generate the read sequences
-              mutseq_t *currseq = mutseq[drand48()<0.5?0:1]; // haplotype from which the reads are generated
+              mutseq_t *currseq = mutseq[drand48()<opt->mut_freq?0:1]; // haplotype from which the reads are generated
               n_sub[0] = n_sub[1] = n_indel[0] = n_indel[1] = n_err[0] = n_err[1] = 0;
               n_sub_first[0] = n_sub_first[1] = n_indel_first[0] = n_indel_first[1] = n_err_first[0] = n_err_first[1] = 0;
               num_n[0]=num_n[1]=0;

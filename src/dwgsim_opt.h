@@ -15,6 +15,7 @@ typedef struct {
     double C;
     int32_t length[2];
     double mut_rate;
+    double mut_freq;
     double indel_frac;
     double indel_extend;
     int32_t indel_min;
