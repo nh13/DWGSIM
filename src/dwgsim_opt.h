@@ -9,6 +9,7 @@ typedef struct {
 
 typedef struct {
     error_t e[2];
+    int32_t is_inner;
     int32_t dist;
     double std_dev;
     int64_t N;

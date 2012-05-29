@@ -42,6 +42,7 @@ dwgsim_opt_t* dwgsim_opt_init()
   opt = calloc(1, sizeof(dwgsim_opt_t));
   opt->e[0].start = opt->e[0].end = opt->e[1].start = opt->e[1].end = 0.02;
   opt->e[0].by = opt->e[1].by = 0;
+  opt->is_inner = 0;
   opt->dist = 500;
   opt->std_dev = 50;
   opt->N = -1;
@@ -92,8 +93,10 @@ int dwgsim_opt_usage(dwgsim_opt_t *opt)
   fprintf(stderr, "Options:\n");
   fprintf(stderr, "         -e FLOAT      per base/color/flow error rate of the first read [from %.3f to %.3f by %.3f]\n", opt->e[0].start, opt->e[0].end, opt->e[0].by);
   fprintf(stderr, "         -E FLOAT      per base/color/flow error rate of the second read [from %.3f to %.3f by %.3f]\n", opt->e[1].start, opt->e[1].end, opt->e[1].by);
-  fprintf(stderr, "         -d INT        inner distance between the two ends [%d]\n", opt->dist);
-  fprintf(stderr, "         -s INT        standard deviation [%.3f]\n", opt->std_dev);
+  fprintf(stderr, "         -i            use the inner distance instead of the outer distance for pairs [%s]\n", __IS_TRUE(opt->is_inner));
+  fprintf(stderr, "         -d INT        %s distance between the two ends for pairs [%d]\n", 
+          (0 == opt->is_inner) ? "outer" : "inner", opt->dist);
+  fprintf(stderr, "         -s INT        standard deviation of the distance for pairs [%.3f]\n", opt->std_dev);
   fprintf(stderr, "         -N INT        number of read pairs (-1 to disable) [%lld]\n", (signed long long int)opt->N);
   fprintf(stderr, "         -C FLOAT      mean coverage across available positions (-1 to disable) [%.2lf]\n", opt->C);
   fprintf(stderr, "         -1 INT        length of the first read [%d]\n", opt->length[0]);
@@ -161,8 +164,9 @@ dwgsim_opt_parse(dwgsim_opt_t *opt, int argc, char *argv[])
   int c;
   int muts_input_type = 0;
   
-  while ((c = getopt(argc, argv, "d:s:N:C:1:2:e:E:r:F:R:X:I:c:S:n:y:BHf:z:m:b:v:x:P:q:h")) >= 0) {
+  while ((c = getopt(argc, argv, "id:s:N:C:1:2:e:E:r:F:R:X:I:c:S:n:y:BHf:z:m:b:v:x:P:q:h")) >= 0) {
       switch (c) {
+        case 'i': opt->is_inner = 1; break;
         case 'd': opt->dist = atoi(optarg); break;
         case 's': opt->std_dev = atof(optarg); break;
         case 'N': opt->N = atoi(optarg); opt->C = -1; break;
@@ -199,6 +203,7 @@ dwgsim_opt_parse(dwgsim_opt_t *opt, int argc, char *argv[])
   }
   if (argc - optind < 2) return 0;
 
+  __check_option(opt->is_inner, 0, 1, "-i");
   __check_option(opt->dist, 0, INT32_MAX, "-d");
   __check_option(opt->std_dev, 0, INT32_MAX, "-s");
   if(opt->N < 0 && opt->C < 0) {

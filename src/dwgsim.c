@@ -585,7 +585,10 @@ void dwgsim_core(dwgsim_opt_t * opt)
                           d = 0;
                       }
                       pos = (int)((l - d + 1) * drand48());
-                  } while (pos < 0 || pos >= seq.l || pos + d - 1 >= seq.l);
+                  } while (pos < 0 
+                           || pos >= seq.l 
+                           || pos + d - 1 >= seq.l 
+                           || (0 == opt->is_inner && ((0 < s[0] && d <= s[1]) || (d <= s[0] && 0 < s[1]))));
               } 
               else {
                   do { // avoid boundary failure
@@ -611,7 +614,11 @@ void dwgsim_core(dwgsim_opt_t * opt)
                               }
                           }
                       }
-                  } while (pos < 0 || pos >= seq.l || pos + d - 1 >= seq.l || 0 == regions_bed_query(regions_bed, contig_i, pos, pos + s[0] + s[1] + d - 1));
+                  } while (pos < 0 
+                           || pos >= seq.l 
+                           || pos + d - 1 >= seq.l 
+                           || (0 == opt->is_inner && ((0 < s[0] && d <= s[1]) || (d <= s[0] && 0 < s[1])))
+                           || 0 == regions_bed_query(regions_bed, contig_i, pos, pos + s[0] + s[1] + d - 1));
               }
 
               // generate the read sequences
@@ -647,7 +654,12 @@ void dwgsim_core(dwgsim_opt_t * opt)
                            * 5' E2 -----> .... E1 -----> 3'
                            * 3'           ....           5'
                            */
-                          __gen_read(0, pos + s[1] + d, ++i); 
+                          if(0 == opt->is_inner) {
+                              __gen_read(0, pos + d - s[0], ++i); 
+                          }
+                          else {
+                              __gen_read(0, pos + s[1] + d, ++i); 
+                          }
                           __gen_read(1, pos, ++i);
                       }
                       else { // - strand
@@ -656,7 +668,12 @@ void dwgsim_core(dwgsim_opt_t * opt)
                            * 5' <----- E1 .... <----- E2  3'
                            */
                           __gen_read(0, pos + s[0], --i);
-                          __gen_read(1, pos + s[0] + d + s[1], --i);
+                          if(0 == opt->is_inner) {
+                              __gen_read(1, pos + d, --i);
+                          }
+                          else {
+                              __gen_read(1, pos + s[0] + d + s[1], --i);
+                          }
                       }
                   }
                   else { // opposite strand
@@ -666,14 +683,24 @@ void dwgsim_core(dwgsim_opt_t * opt)
                            * 3'           .... <----- E2 5'
                            */
                           __gen_read(0, pos, ++i);
-                          __gen_read(1, pos + s[0] + d + s[1], --i);
+                          if(0 == opt->is_inner) {
+                              __gen_read(1, pos + d, --i);
+                          }
+                          else {
+                              __gen_read(1, pos + s[0] + d + s[1], --i);
+                          }
                       }
                       else { // - strand
                           /*
                            * 5' E2 -----> ....           3'
                            * 3'           .... <----- E1 5'
                            */
-                          __gen_read(0, pos + s[1] + d + s[0], --i); 
+                          if(0 == opt->is_inner) {
+                              __gen_read(0, pos + d, --i);
+                          }
+                          else {
+                              __gen_read(0, pos + s[1] + d + s[0], --i); 
+                          }
                           __gen_read(1, pos, i++);
                       }
                   }
