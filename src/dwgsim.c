@@ -623,7 +623,7 @@ void dwgsim_core(dwgsim_opt_t * opt)
                   } while (pos < 0 
                            || pos >= seq.l 
                            || pos + d - 1 >= seq.l 
-                           || (0 == opt->is_inner && ((0 < s[0] && d <= s[1]) || (d <= s[0] && 0 < s[1])))
+                           || (0 < s[1] && 0 == opt->is_inner && ((0 < s[0] && d <= s[1]) || (d <= s[0] && 0 < s[1])))
                            || 0 == regions_bed_query(regions_bed, contig_i, pos, pos + s[0] + s[1] + d - 1));
               }
 
