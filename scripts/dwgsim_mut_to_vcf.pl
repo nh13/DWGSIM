@@ -22,6 +22,7 @@ my %to_alt = (
 open(FH, "$fn") || die "Could not open '$fn' for reading.\n";
 
 print STDOUT "##fileformat=VCFv4.1\n";
+print STDOUT "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tSample\n";
 
 my $type = -1; # 1 - SUB, 2 - INS, 3 - DEL
 my $prev_name = -1;
