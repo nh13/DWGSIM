@@ -522,6 +522,7 @@ void dwgsim_core(dwgsim_opt_t * opt)
               }
               if(0 == m) {
                   fprintf(stderr, "[dwgsim_core] #0 skip sequence '%s' as it is not in the targeted region\n", name);
+                  contig_i++;
                   continue; // skip this region
               }
               l = m;
