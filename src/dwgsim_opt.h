@@ -34,6 +34,7 @@ typedef struct {
     int32_t fn_muts_input_type;
     char *fn_regions_bed;
     FILE *fp_mut;
+    FILE *fp_vcf;
     FILE *fp_bfast;
     FILE *fp_bwa1;
     FILE *fp_bwa2;

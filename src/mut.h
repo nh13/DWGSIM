@@ -77,7 +77,7 @@ mut_diref(dwgsim_opt_t *opt, const seq_t *seq, mutseq_t *hap1, mutseq_t *hap2, i
 // 4 - variant allele (IUPAC code or insertion base(s))
 // 5 - '-' for homozygous, '+' for heterozygous
 void 
-mut_print(const char *name, const seq_t *seq, mutseq_t *hap1, mutseq_t *hap2, FILE *fpout);
+mut_print(const char *name, const seq_t *seq, mutseq_t *hap1, mutseq_t *hap2, FILE *fpout_txt, FILE *fpout_vcf);
 
 // 0 - 0
 // 1 - 1

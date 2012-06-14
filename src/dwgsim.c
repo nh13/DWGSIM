@@ -557,7 +557,7 @@ void dwgsim_core(dwgsim_opt_t * opt)
       // generate mutations and print them out
       mutseq[0] = mutseq_init(); mutseq[1] = mutseq_init();
       mut_diref(opt, &seq, mutseq[0], mutseq[1], contig_i, muts_input);
-      mut_print(name, &seq, mutseq[0], mutseq[1], opt->fp_mut);
+      mut_print(name, &seq, mutseq[0], mutseq[1], opt->fp_mut, opt->fp_vcf);
 
       for (ii = 0; ii != n_pairs; ++ii, ++ctr) { // the core loop
           if(0 == (ctr % 10000)) {
@@ -588,7 +588,7 @@ void dwgsim_core(dwgsim_opt_t * opt)
                   } while (pos < 0 
                            || pos >= seq.l 
                            || pos + d - 1 >= seq.l 
-                           || (0 == opt->is_inner && ((0 < s[0] && d <= s[1]) || (d <= s[0] && 0 < s[1]))));
+                           || (0 < s[1] && 0 == opt->is_inner && ((0 < s[0] && d <= s[1]) || (d <= s[0] && 0 < s[1]))));
               } 
               else {
                   do { // avoid boundary failure
@@ -989,6 +989,8 @@ int main(int argc, char *argv[])
   opt->fp_fai = fopen(fn_fai, "r"); // NB: depends on returning NULL;
   strcpy(fn_tmp, argv[optind+1]); strcat(fn_tmp, ".mutations.txt");
   opt->fp_mut = xopen(fn_tmp, "w");
+  strcpy(fn_tmp, argv[optind+1]); strcat(fn_tmp, ".mutations.vcf");
+  opt->fp_vcf = xopen(fn_tmp, "w");
   strcpy(fn_tmp, argv[optind+1]); strcat(fn_tmp, ".bfast.fastq");
   opt->fp_bfast = xopen(fn_tmp, "w");
   strcpy(fn_tmp, argv[optind+1]); strcat(fn_tmp, ".bwa.read1.fastq");
@@ -1002,6 +1004,8 @@ int main(int argc, char *argv[])
   // Close files
   fclose(opt->fp_fa); fclose(opt->fp_bfast); fclose(opt->fp_bwa1); fclose(opt->fp_bwa2); 
   if(NULL != opt->fp_fai) fclose(opt->fp_fai);
+  fclose(opt->fp_mut);
+  fclose(opt->fp_vcf);
 
   dwgsim_opt_destroy(opt);
 
