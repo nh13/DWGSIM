@@ -419,7 +419,7 @@ void dwgsim_core(dwgsim_opt_t * opt)
   seq_t seq;
   mutseq_t *mutseq[2]={NULL,NULL};
   uint64_t tot_len, ii=0, ctr=0;
-  int i, l, n_ref, contig_i;
+  int i, l, m, n_ref, contig_i;
   char name[1024], *qstr;
   int size[2], prev_skip=0, qstr_l=0;
   int num_n[2];
@@ -514,12 +514,17 @@ void dwgsim_core(dwgsim_opt_t * opt)
       else {
           if(NULL != regions_bed) {
               // recalculate l
-              l = 0;
+              m = 0;
               for(i=0;i<regions_bed->n;i++) {
                   if(contig_i == regions_bed->contig[i]) {
-                      l += regions_bed->end[i] - regions_bed->start[i] + 1;
+                      m += regions_bed->end[i] - regions_bed->start[i] + 1;
                   }
               }
+              if(0 == m) {
+                  fprintf(stderr, "[dwgsim_core] #0 skip sequence '%s' as it is not in the targeted region\n", name);
+                  continue; // skip this region
+              }
+              l = m;
           }
           if(0 < opt->N) {
               // based on -N
@@ -537,14 +542,14 @@ void dwgsim_core(dwgsim_opt_t * opt)
       if (0 < opt->length[1] && l < opt->dist + 3 * opt->std_dev) {
           if(0 == prev_skip) fprintf(stderr, "\n");
           prev_skip = 1;
-          fprintf(stderr, "[dwgsim_core] skip sequence '%s' as it is shorter than %f!\n", name, opt->dist + 3 * opt->std_dev);
+          fprintf(stderr, "[dwgsim_core] #1 skip sequence '%s' as it is shorter than %f!\n", name, opt->dist + 3 * opt->std_dev);
           contig_i++;
           continue;
       }
       else if (l < opt->length[0] || (0 < opt->length[1] && l < opt->length[1])) {
           if(0 == prev_skip) fprintf(stderr, "\n");
           prev_skip = 1;
-          fprintf(stderr, "[dwgsim_core] skip sequence '%s' as it is shorter than %d!\n", name, (l < opt->length[0]) ? opt->length[0] : opt->length[1]);
+          fprintf(stderr, "[dwgsim_core] #2 skip sequence '%s' as it is shorter than %d!\n", name, (l < opt->length[0]) ? opt->length[0] : opt->length[1]);
           contig_i++;
           continue;
       }
