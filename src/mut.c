@@ -749,20 +749,21 @@ void mut_diref(dwgsim_opt_t *opt, const seq_t *seq, mutseq_t *hap1, mutseq_t *ha
 
 void mut_print(const char *name, const seq_t *seq, mutseq_t *hap1, mutseq_t *hap2, FILE *fpout_txt, FILE *fpout_vcf)
 {
-  int32_t i, hap;
+  int32_t i, j, hap;
   
   // header
   fprintf(fpout_vcf, "##fileformat=VCFv4.1\n");
   fprintf(fpout_vcf, "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n");
   
   // body
-  // TODO: AF and pl tag
+  mut_t mut_prev[2] = {NOCHANGE,NOCHANGE}; // for deletions
   for (i = 0; i < seq->l; ++i) {
       mut_t c[3];
       c[0] = nst_nt4_table[(int)seq->s[i]];
       c[1] = hap1->s[i]; c[2] = hap2->s[i];
-      if (c[0] >= 4) continue;
-      if ((c[1] & mutmsk) != NOCHANGE || (c[2] & mutmsk) != NOCHANGE) {
+      if (c[0] >= 4) {
+          // do nothing
+      } else if ((c[1] & mutmsk) != NOCHANGE || (c[2] & mutmsk) != NOCHANGE) {
           fprintf(fpout_txt, "%s\t%d\t", name, i+1);
           if ((c[1] & mut_and_type_mask) == (c[2] & mut_and_type_mask)) { // hom
               if ((c[1]&mutmsk) == SUBSTITUTE) { // substitution
@@ -770,8 +771,22 @@ void mut_print(const char *name, const seq_t *seq, mutseq_t *hap1, mutseq_t *hap
                   fprintf(fpout_vcf, "%s\t%d\t.\t%c\t%c\t100\tPASS\tAF=1.0;pl=3;mt=SUBSTITUTE\n", name, i+1, "ACGTN"[c[0]], "ACGTN"[c[1]&0xf]);
               } else if ((c[1]&mutmsk) == DELETE) { // del
                   fprintf(fpout_txt, "%c\t-\t3\n", "ACGTN"[c[0]]);
-                  if(0 == i) fprintf(fpout_vcf, "%s\t%d\t.\t%c\t.\t100\tPASS\tAF=1.0;pl=3;mt=DELETE\n", name, i, "ACGTN"[c[0]]);
-                  else fprintf(fpout_vcf, "%s\t%d\t.\t%c%c\t.\t100\tPASS\tAF=1.0;pl=3;mt=DELETE\n", name, i, "ACGTN"[nst_nt4_table[(int)seq->s[i-1]]], "ACGTN"[c[0]]);
+                  fprintf(fpout_vcf, "%s\t%d\t.\t", name, i);
+                  if (0 < i) fputc("ACGTN"[nst_nt4_table[(int)seq->s[i-1]]], fpout_vcf);
+                  for (j = i; j < seq->l && (c[1] & mut_and_type_mask) == (c[2] & mut_and_type_mask) && (c[1]&mutmsk) == DELETE; ++j) {
+                      fputc("ACGTN"[c[0]], fpout_vcf);
+                      // NB: this modifies 'c'
+                      if (j+1 < seq->l) { 
+                          c[0] = nst_nt4_table[(int)seq->s[j+1]];
+                          c[1] = hap1->s[j+1]; c[2] = hap2->s[j+1];
+                      }
+                  }
+                  if (0 < i) fprintf(fpout_vcf, "\t%c", "ACGTN"[nst_nt4_table[(int)seq->s[i-1]]]);
+                  else fprintf(fpout_vcf, "\t.");
+                  fprintf(fpout_vcf, "\t100\tPASS\tAF=1.0;pl=3;mt=DELETE\n"); 
+                  // NB: convert back 'c'
+                  c[0] = nst_nt4_table[(int)seq->s[i]];
+                  c[1] = hap1->s[i]; c[2] = hap2->s[i];
               } else if ((c[1] & mutmsk) == INSERT) { // ins
                   fprintf(fpout_txt, "-\t");
                   mut_print_ins(fpout_txt, hap1, i);
@@ -788,12 +803,40 @@ void mut_print(const char *name, const seq_t *seq, mutseq_t *hap1, mutseq_t *hap
                   else fprintf(fpout_vcf, "%s\t%d\t.\t%c\t%c\t100\tPASS\tAF=0.5;pl=2;mt=SUBSTITUTE\n", name, i+1, "ACGTN"[c[0]], "ACGTN"[c[2]&0xf]);
               } else if ((c[1]&mutmsk) == DELETE) {
                   fprintf(fpout_txt, "%c\t-\t1\n", "ACGTN"[c[0]]);
-                  if(0 == i) fprintf(fpout_vcf, "%s\t%d\t.\t%c\t.\t100\tPASS\tAF=1.0;pl=1;mt=DELETE\n", name, i, "ACGTN"[c[0]]);
-                  else fprintf(fpout_vcf, "%s\t%d\t.\t%c%c\t.\t100\tPASS\tAF=1.0;pl=1;mt=DELETE\n", name, i, "ACGTN"[nst_nt4_table[(int)seq->s[i-1]]], "ACGTN"[c[0]]);
+                  fprintf(fpout_vcf, "%s\t%d\t.\t", name, i);
+                  if (0 < i) fputc("ACGTN"[nst_nt4_table[(int)seq->s[i-1]]], fpout_vcf);
+                  for (j = i; j < seq->l && (c[1] & mut_and_type_mask) != (c[2] & mut_and_type_mask) && (c[1]&mutmsk) == DELETE; ++j) {
+                      fputc("ACGTN"[c[0]], fpout_vcf);
+                      // NB: this modifies 'c'
+                      if (j+1 < seq->l) { 
+                          c[0] = nst_nt4_table[(int)seq->s[j+1]];
+                          c[1] = hap1->s[j+1]; c[2] = hap2->s[j+1];
+                      }
+                  }
+                  if (0 < i) fprintf(fpout_vcf, "\t%c", "ACGTN"[nst_nt4_table[(int)seq->s[i-1]]]);
+                  else fprintf(fpout_vcf, "\t.");
+                  fprintf(fpout_vcf, "\t100\tPASS\tAF=1.0;pl=1;mt=DELETE\n"); 
+                  // NB: convert back 'c'
+                  c[0] = nst_nt4_table[(int)seq->s[i]];
+                  c[1] = hap1->s[i]; c[2] = hap2->s[i];
               } else if ((c[2]&mutmsk) == DELETE) {
                   fprintf(fpout_txt, "%c\t-\t2\n", "ACGTN"[c[0]]);
-                  if(0 == i) fprintf(fpout_vcf, "%s\t%d\t.\t%c\t.\t100\tPASS\tAF=1.0;pl=2;mt=DELETE\n", name, i, "ACGTN"[c[0]]);
-                  else fprintf(fpout_vcf, "%s\t%d\t.\t%c%c\t.\t100\tPASS\tAF=1.0;pl=2;mt=DELETE\n", name, i, "ACGTN"[nst_nt4_table[(int)seq->s[i-1]]], "ACGTN"[c[0]]);
+                  fprintf(fpout_vcf, "%s\t%d\t.\t", name, i);
+                  if (0 < i) fputc("ACGTN"[nst_nt4_table[(int)seq->s[i-1]]], fpout_vcf);
+                  for (j = i; j < seq->l && (c[1] & mut_and_type_mask) != (c[2] & mut_and_type_mask) && (c[2]&mutmsk) == DELETE; ++j) {
+                      fputc("ACGTN"[c[0]], fpout_vcf);
+                      // NB: this modifies 'c'
+                      if (j+1 < seq->l) { 
+                          c[0] = nst_nt4_table[(int)seq->s[j+1]];
+                          c[1] = hap1->s[j+1]; c[2] = hap2->s[j+1];
+                      }
+                  }
+                  if (0 < i) fprintf(fpout_vcf, "\t%c", "ACGTN"[nst_nt4_table[(int)seq->s[i-1]]]);
+                  else fprintf(fpout_vcf, "\t.");
+                  fprintf(fpout_vcf, "\t100\tPASS\tAF=1.0;pl=2;mt=DELETE\n"); 
+                  // NB: convert back 'c'
+                  c[0] = nst_nt4_table[(int)seq->s[i]];
+                  c[1] = hap1->s[i]; c[2] = hap2->s[i];
               } else if ((c[1]&mutmsk) == INSERT) { // ins 1
                   fprintf(fpout_txt, "-\t");
                   mut_print_ins(fpout_txt, hap1, i);
@@ -811,5 +854,7 @@ void mut_print(const char *name, const seq_t *seq, mutseq_t *hap1, mutseq_t *hap
               } else assert(0);
           }
       }
+      mut_prev[0] = (c[1] & mutmsk) != NOCHANGE;
+      mut_prev[1] = (c[2] & mutmsk) != NOCHANGE;
   }
 }
