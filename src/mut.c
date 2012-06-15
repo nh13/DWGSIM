@@ -770,7 +770,8 @@ void mut_print(const char *name, const seq_t *seq, mutseq_t *hap1, mutseq_t *hap
                   fprintf(fpout_vcf, "%s\t%d\t.\t%c\t%c\t100\tPASS\tAF=1.0;pl=3\n", name, i+1, "ACGTN"[c[0]], "ACGTN"[c[1]&0xf]);
               } else if ((c[1]&mutmsk) == DELETE) { // del
                   fprintf(fpout_txt, "%c\t-\t3\n", "ACGTN"[c[0]]);
-                  fprintf(fpout_vcf, "%s\t%d\t.\t%c\t.\t100\tPASS\tAF=1.0;pl=3\n", name, i+1, "ACGTN"[c[0]]);
+                  if(0 == i) fprintf(fpout_vcf, "%s\t%d\t.\t%c\t.\t100\tPASS\tAF=1.0;pl=3\n", name, i, "ACGTN"[c[0]]);
+                  else fprintf(fpout_vcf, "%s\t%d\t.\t%c%c\t.\t100\tPASS\tAF=1.0;pl=3\n", name, i, "ACGTN"[nst_nt4_table[(int)seq->s[i-1]]], "ACGTN"[c[0]]);
               } else if ((c[1] & mutmsk) == INSERT) { // ins
                   fprintf(fpout_txt, "-\t");
                   mut_print_ins(fpout_txt, hap1, i);
@@ -787,10 +788,12 @@ void mut_print(const char *name, const seq_t *seq, mutseq_t *hap1, mutseq_t *hap
                   else fprintf(fpout_vcf, "%s\t%d\t.\t%c\t%c\t100\tPASS\tAF=0.5;pl=2\n", name, i+1, "ACGTN"[c[0]], "ACGTN"[c[2]&0xf]);
               } else if ((c[1]&mutmsk) == DELETE) {
                   fprintf(fpout_txt, "%c\t-\t1\n", "ACGTN"[c[0]]);
-                  fprintf(fpout_vcf, "%s\t%d\t.\t%c\t.\t100\tPASS\tAF=0.5;pl=1\n", name, i+1, "ACGTN"[c[0]]);
+                  if(0 == i) fprintf(fpout_vcf, "%s\t%d\t.\t%c\t.\t100\tPASS\tAF=1.0;pl=1\n", name, i, "ACGTN"[c[0]]);
+                  else fprintf(fpout_vcf, "%s\t%d\t.\t%c%c\t.\t100\tPASS\tAF=1.0;pl=1\n", name, i, "ACGTN"[nst_nt4_table[(int)seq->s[i-1]]], "ACGTN"[c[0]]);
               } else if ((c[2]&mutmsk) == DELETE) {
                   fprintf(fpout_txt, "%c\t-\t2\n", "ACGTN"[c[0]]);
-                  fprintf(fpout_vcf, "%s\t%d\t.\t%c\t.\t100\tPASS\tAF=0.5;pl=2\n", name, i+1, "ACGTN"[c[0]]);
+                  if(0 == i) fprintf(fpout_vcf, "%s\t%d\t.\t%c\t.\t100\tPASS\tAF=1.0;pl=2\n", name, i, "ACGTN"[c[0]]);
+                  else fprintf(fpout_vcf, "%s\t%d\t.\t%c%c\t.\t100\tPASS\tAF=1.0;pl=2\n", name, i, "ACGTN"[nst_nt4_table[(int)seq->s[i-1]]], "ACGTN"[c[0]]);
               } else if ((c[1]&mutmsk) == INSERT) { // ins 1
                   fprintf(fpout_txt, "-\t");
                   mut_print_ins(fpout_txt, hap1, i);
