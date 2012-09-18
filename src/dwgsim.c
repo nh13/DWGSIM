@@ -533,10 +533,14 @@ void dwgsim_core(dwgsim_opt_t * opt)
                       int m;                                                                            
                       for(m=regions_bed->start[i];m<=regions_bed->end[i];m++) {                                               
                           switch (seq.s[m-1]) {                                                                                                             
-                            case 'a':                                                                                                                                                                     case 'A':
-                            case 'c':                                                                                                                                                                        case 'C':    
-                            case 'g':                                                                                                                                                                        case 'G':    
-                            case 't':                                                                                                                                                                        case 'T':    
+                            case 'a':
+                            case 'A':
+                            case 'c':
+                            case 'C':
+                            case 'g':
+                            case 'G':
+                            case 't':
+                            case 'T':
                               break;                                                                                                                                                                         default:     
                                 num_n++;                                                                                                                                                                         break;     
                           }                                                                                                                                                                            }                  
