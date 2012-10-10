@@ -526,6 +526,30 @@ void dwgsim_core(dwgsim_opt_t * opt)
                   continue; // skip this region
               }
               l = m;
+
+              int num_n = 0;
+              for(i=0;i<regions_bed->n;i++) {           
+                  if(contig_i == regions_bed->contig[i]) {                    
+                      int m;                                                                            
+                      for(m=regions_bed->start[i];m<=regions_bed->end[i];m++) {                                               
+                          switch (seq.s[m-1]) {                                                                                                             
+                            case 'a':
+                            case 'A':
+                            case 'c':
+                            case 'C':
+                            case 'g':
+                            case 'G':
+                            case 't':
+                            case 'T':
+                              break;                                                                                                                                                                         default:     
+                                num_n++;                                                                                                                                                                         break;     
+                          }                                                                                                                                                                            }                  
+                  }                                                                                                                                                                            } 
+              if(0.95 < num_n / (double)l) { // TODO: arbitrary cutoff
+                  fprintf(stderr, "[dwgsim_core] #1 skip sequence '%s' as %d out of %d bases are non-ACGT\n", name, num_n, l);
+                  contig_i++;
+                  continue;
+              }
           }
           if(0 < opt->N) {
               // based on -N
@@ -543,14 +567,14 @@ void dwgsim_core(dwgsim_opt_t * opt)
       if (0 < opt->length[1] && l < opt->dist + 3 * opt->std_dev) {
           if(0 == prev_skip) fprintf(stderr, "\n");
           prev_skip = 1;
-          fprintf(stderr, "[dwgsim_core] #1 skip sequence '%s' as it is shorter than %f!\n", name, opt->dist + 3 * opt->std_dev);
+          fprintf(stderr, "[dwgsim_core] #2 skip sequence '%s' as it is shorter than %f!\n", name, opt->dist + 3 * opt->std_dev);
           contig_i++;
           continue;
       }
       else if (l < opt->length[0] || (0 < opt->length[1] && l < opt->length[1])) {
           if(0 == prev_skip) fprintf(stderr, "\n");
           prev_skip = 1;
-          fprintf(stderr, "[dwgsim_core] #2 skip sequence '%s' as it is shorter than %d!\n", name, (l < opt->length[0]) ? opt->length[0] : opt->length[1]);
+          fprintf(stderr, "[dwgsim_core] #3 skip sequence '%s' as it is shorter than %d!\n", name, (l < opt->length[0]) ? opt->length[0] : opt->length[1]);
           contig_i++;
           continue;
       }
