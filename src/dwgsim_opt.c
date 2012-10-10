@@ -158,6 +158,26 @@ static void get_error_rate(const char *str, error_t *e)
 }
 
 int32_t
+dwgsim_opt_is_int(char *optarg)
+{
+  int32_t i;
+  for(i=0;i<strlen(optarg);i++) {
+      if(!isdigit(optarg[i])) return 0;
+  }
+  return 1;
+}
+
+int32_t
+dwgsim_atoi(char *optarg, char flag)
+{
+  if(0 == dwgsim_opt_is_int(optarg)) {
+      fprintf(stderr, "Error: command line option -%c is not a number [%s]\n", flag, optarg);
+      exit(1);
+  }
+  return atoi(optarg);
+}
+
+int32_t
 dwgsim_opt_parse(dwgsim_opt_t *opt, int argc, char *argv[]) 
 {
   int32_t i;
@@ -167,22 +187,22 @@ dwgsim_opt_parse(dwgsim_opt_t *opt, int argc, char *argv[])
   while ((c = getopt(argc, argv, "id:s:N:C:1:2:e:E:r:F:R:X:I:c:S:n:y:BHf:z:m:b:v:x:P:q:h")) >= 0) {
       switch (c) {
         case 'i': opt->is_inner = 1; break;
-        case 'd': opt->dist = atoi(optarg); break;
+        case 'd': opt->dist = dwgsim_atoi(optarg, 'd'); break;
         case 's': opt->std_dev = atof(optarg); break;
-        case 'N': opt->N = atoi(optarg); opt->C = -1; break;
+        case 'N': opt->N = dwgsim_atoi(optarg, 'N'); opt->C = -1; break;
         case 'C': opt->C = atof(optarg); opt->N = -1; break;
-        case '1': opt->length[0] = atoi(optarg); break;
-        case '2': opt->length[1] = atoi(optarg); break;
+        case '1': opt->length[0] = dwgsim_atoi(optarg, '1'); break;
+        case '2': opt->length[1] = dwgsim_atoi(optarg, '2'); break;
         case 'e': get_error_rate(optarg, &opt->e[0]); break;
         case 'E': get_error_rate(optarg, &opt->e[1]); break;
         case 'r': opt->mut_rate = atof(optarg); break;
         case 'F': opt->mut_freq = atof(optarg); break;
         case 'R': opt->indel_frac = atof(optarg); break;
         case 'X': opt->indel_extend = atof(optarg); break;
-        case 'I': opt->indel_min = atoi(optarg); break;
-        case 'c': opt->data_type = atoi(optarg); break;
-        case 'S': opt->strandedness = atoi(optarg); break;
-        case 'n': opt->max_n = atoi(optarg); break;
+        case 'I': opt->indel_min = dwgsim_atoi(optarg, 'I'); break;
+        case 'c': opt->data_type = dwgsim_atoi(optarg, 'c'); break;
+        case 'S': opt->strandedness = dwgsim_atoi(optarg, 'S'); break;
+        case 'n': opt->max_n = dwgsim_atoi(optarg, 'n'); break;
         case 'y': opt->rand_read = atof(optarg); break;
         case 'f': 
                   if(NULL != opt->flow_order) free(opt->flow_order);
@@ -191,7 +211,7 @@ dwgsim_opt_parse(dwgsim_opt_t *opt, int argc, char *argv[])
         case 'B': opt->use_base_error = 1; break;
         case 'H': opt->is_hap = 1; break;
         case 'h': return 0;
-        case 'z': opt->seed = atoi(optarg); break;
+        case 'z': opt->seed = dwgsim_atoi(optarg, 'n'); break;
         case 'm': free(opt->fn_muts_input); opt->fn_muts_input = strdup(optarg); opt->fn_muts_input_type = MUT_INPUT_TXT; muts_input_type |= 0x1; break;
         case 'b': free(opt->fn_muts_input); opt->fn_muts_input = strdup(optarg); opt->fn_muts_input_type = MUT_INPUT_BED; muts_input_type |= 0x2; break;
         case 'v': free(opt->fn_muts_input); opt->fn_muts_input = strdup(optarg); opt->fn_muts_input_type = MUT_INPUT_VCF; muts_input_type |= 0x4; break;
