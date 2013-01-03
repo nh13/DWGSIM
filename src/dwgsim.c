@@ -114,7 +114,7 @@ uint8_t nst_nt4_table[256] = {
                 uint8_t *insertion = NULL; \
                 insertion = mut_get_ins_long_n(currseq->ins[ins], &num_ins); \
                 if(0 == strand[x]) { \
-                    byte_index = mut_packed_len(num_ins)-1; bit_index = num_ins & 3; \
+                    byte_index = mut_packed_len(num_ins)-1; bit_index = (num_ins - 1) & 3; \
                     while(num_ins > 0 && k < s[x]) { \
                         tmp_seq[x][k++] = (insertion[byte_index] >> (bit_index << 1)) & 0x3;                \
                         --num_ins, ins >>= 2; \
