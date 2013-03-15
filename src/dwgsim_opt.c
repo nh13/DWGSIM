@@ -61,6 +61,7 @@ dwgsim_opt_t* dwgsim_opt_init()
   opt->flow_order_len = 0;
   opt->use_base_error = 0;
   opt->seed = -1;
+  opt->muts_only = 0;
   opt->fixed_quality = NULL;
   opt->fn_muts_input = NULL;
   opt->fn_muts_input_type = -1;
@@ -122,6 +123,7 @@ int dwgsim_opt_usage(dwgsim_opt_t *opt)
   fprintf(stderr, "         -B            use a per-base error rate for Ion Torrent data [%s]\n", __IS_TRUE(opt->use_base_error));
   fprintf(stderr, "         -H            haploid mode [%s]\n", __IS_TRUE(opt->is_hap));
   fprintf(stderr, "         -z INT        random seed (-1 uses the current time) [%d]\n", opt->seed);
+  fprintf(stderr, "         -M            generate a mutations file only [%s]\n", __IS_TRUE(opt->muts_only));
   fprintf(stderr, "         -m FILE       the mutations txt file to re-create [%s]\n", (MUT_INPUT_TXT != opt->fn_muts_input_type) ? "not using" : opt->fn_muts_input);
   fprintf(stderr, "         -b FILE       the bed-like file set of candidate mutations [%s]\n", (MUT_INPUT_BED == opt->fn_muts_input_type) ? "not using" : opt->fn_muts_input);
   fprintf(stderr, "         -v FILE       the vcf file set of candidate mutations (use pl tag for strand) [%s]\n", (MUT_INPUT_VCF == opt->fn_muts_input_type) ? "not using" : opt->fn_muts_input);
@@ -184,7 +186,7 @@ dwgsim_opt_parse(dwgsim_opt_t *opt, int argc, char *argv[])
   int c;
   int muts_input_type = 0;
   
-  while ((c = getopt(argc, argv, "id:s:N:C:1:2:e:E:r:F:R:X:I:c:S:n:y:BHf:z:m:b:v:x:P:q:h")) >= 0) {
+  while ((c = getopt(argc, argv, "id:s:N:C:1:2:e:E:r:F:R:X:I:c:S:n:y:BHf:z:Mm:b:v:x:P:q:h")) >= 0) {
       switch (c) {
         case 'i': opt->is_inner = 1; break;
         case 'd': opt->dist = dwgsim_atoi(optarg, 'd'); break;
@@ -212,6 +214,7 @@ dwgsim_opt_parse(dwgsim_opt_t *opt, int argc, char *argv[])
         case 'H': opt->is_hap = 1; break;
         case 'h': return 0;
         case 'z': opt->seed = dwgsim_atoi(optarg, 'n'); break;
+        case 'M': opt->muts_only = 1; break;
         case 'm': free(opt->fn_muts_input); opt->fn_muts_input = strdup(optarg); opt->fn_muts_input_type = MUT_INPUT_TXT; muts_input_type |= 0x1; break;
         case 'b': free(opt->fn_muts_input); opt->fn_muts_input = strdup(optarg); opt->fn_muts_input_type = MUT_INPUT_BED; muts_input_type |= 0x2; break;
         case 'v': free(opt->fn_muts_input); opt->fn_muts_input = strdup(optarg); opt->fn_muts_input_type = MUT_INPUT_VCF; muts_input_type |= 0x4; break;
@@ -366,6 +369,8 @@ dwgsim_opt_parse(dwgsim_opt_t *opt, int argc, char *argv[])
       opt->e[0].by = (opt->e[0].end - opt->e[0].start) / opt->length[0];
       opt->e[1].by = (opt->e[1].end - opt->e[1].start) / opt->length[1];
   }
+  
+  __check_option(opt->muts_only, 0, 1, "-M");
 
   return 1;
 }

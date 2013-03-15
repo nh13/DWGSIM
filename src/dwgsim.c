@@ -502,487 +502,496 @@ void dwgsim_core(dwgsim_opt_t * opt)
       contigs = NULL;
   }
 
-  fprintf(stderr, "[dwgsim_core] Currently on: \n0");
+  if(0 == opt->muts_only) {
+      fprintf(stderr, "[dwgsim_core] Currently on: \n0");
+  }
   contig_i = 0;
   while ((l = seq_read_fasta(opt->fp_fa, &seq, name, 0)) >= 0) {
       int64_t n_pairs;
       n_ref--;
 
-      if(0 == n_ref && opt->C < 0) {
-          n_pairs = opt->N - n_sim;
-      }
-      else {
-          if(NULL != regions_bed) {
-              // recalculate l
-              m = 0;
-              for(i=0;i<regions_bed->n;i++) {
-                  if(contig_i == regions_bed->contig[i]) {
-                      m += regions_bed->end[i] - regions_bed->start[i] + 1;
-                  }
-              }
-              if(0 == m) {
-                  fprintf(stderr, "[dwgsim_core] #0 skip sequence '%s' as it is not in the targeted region\n", name);
-                  contig_i++;
-                  continue; // skip this region
-              }
-              l = m;
-
-              int num_n = 0;
-              for(i=0;i<regions_bed->n;i++) {           
-                  if(contig_i == regions_bed->contig[i]) {                    
-                      int m;                                                                            
-                      for(m=regions_bed->start[i];m<=regions_bed->end[i];m++) {                                               
-                          switch (seq.s[m-1]) {                                                                                                             
-                            case 'a':
-                            case 'A':
-                            case 'c':
-                            case 'C':
-                            case 'g':
-                            case 'G':
-                            case 't':
-                            case 'T':
-                              break;                                                                                                                                                                         default:     
-                                num_n++;                                                                                                                                                                         break;     
-                          }                                                                                                                                                                            }                  
-                  }                                                                                                                                                                            } 
-              if(0.95 < num_n / (double)l) { // TODO: arbitrary cutoff
-                  fprintf(stderr, "[dwgsim_core] #1 skip sequence '%s' as %d out of %d bases are non-ACGT\n", name, num_n, l);
-                  contig_i++;
-                  continue;
-              }
-          }
-          if(0 < opt->N) {
-              // based on -N
-              n_pairs = (uint64_t)((long double)l / tot_len * opt->N + 0.5);
-              if(opt->N - n_sim < n_pairs) n_pairs = opt->N - n_sim; // make sure we don't simulate too many reads
+      if(0 == opt->muts_only) {
+          if(0 == n_ref && opt->C < 0) {
+              n_pairs = opt->N - n_sim;
           }
           else {
-              // based on coverage, with added random reads
-              n_pairs = (uint64_t)(l * opt->C / ((long double)(size[0] + size[1])) / (1.0 - opt->rand_read) + 0.5);
-          }
-      }
+              if(NULL != regions_bed) {
+                  // recalculate l
+                  m = 0;
+                  for(i=0;i<regions_bed->n;i++) {
+                      if(contig_i == regions_bed->contig[i]) {
+                          m += regions_bed->end[i] - regions_bed->start[i] + 1;
+                      }
+                  }
+                  if(0 == m) {
+                      fprintf(stderr, "[dwgsim_core] #0 skip sequence '%s' as it is not in the targeted region\n", name);
+                      contig_i++;
+                      continue; // skip this region
+                  }
+                  l = m;
 
-      // for paired end/mate pair, make sure we have enough bases in this
-      // sequence
-      if (0 < opt->length[1] && l < opt->dist + 3 * opt->std_dev) {
-          if(0 == prev_skip) fprintf(stderr, "\n");
-          prev_skip = 1;
-          fprintf(stderr, "[dwgsim_core] #2 skip sequence '%s' as it is shorter than %f!\n", name, opt->dist + 3 * opt->std_dev);
-          contig_i++;
-          continue;
+                  int num_n = 0;
+                  for(i=0;i<regions_bed->n;i++) {           
+                      if(contig_i == regions_bed->contig[i]) {                    
+                          int m;                                                                            
+                          for(m=regions_bed->start[i];m<=regions_bed->end[i];m++) {                                               
+                              switch (seq.s[m-1]) {                                                                                                             
+                                case 'a':
+                                case 'A':
+                                case 'c':
+                                case 'C':
+                                case 'g':
+                                case 'G':
+                                case 't':
+                                case 'T':
+                                  break;                                                                                                                                                                         default:     
+                                    num_n++;                                                                                                                                                                         break;     
+                              }                                                                                                                                                                            }                  
+                      }                                                                                                                                                                            } 
+                  if(0.95 < num_n / (double)l) { // TODO: arbitrary cutoff
+                      fprintf(stderr, "[dwgsim_core] #1 skip sequence '%s' as %d out of %d bases are non-ACGT\n", name, num_n, l);
+                      contig_i++;
+                      continue;
+                  }
+              }
+              if(0 < opt->N) {
+                  // based on -N
+                  n_pairs = (uint64_t)((long double)l / tot_len * opt->N + 0.5);
+                  if(opt->N - n_sim < n_pairs) n_pairs = opt->N - n_sim; // make sure we don't simulate too many reads
+              }
+              else {
+                  // based on coverage, with added random reads
+                  n_pairs = (uint64_t)(l * opt->C / ((long double)(size[0] + size[1])) / (1.0 - opt->rand_read) + 0.5);
+              }
+          }
+
+          // for paired end/mate pair, make sure we have enough bases in this
+          // sequence
+          if (0 < opt->length[1] && l < opt->dist + 3 * opt->std_dev) {
+              if(0 == prev_skip) fprintf(stderr, "\n");
+              prev_skip = 1;
+              fprintf(stderr, "[dwgsim_core] #2 skip sequence '%s' as it is shorter than %f!\n", name, opt->dist + 3 * opt->std_dev);
+              contig_i++;
+              continue;
+          }
+          else if (l < opt->length[0] || (0 < opt->length[1] && l < opt->length[1])) {
+              if(0 == prev_skip) fprintf(stderr, "\n");
+              prev_skip = 1;
+              fprintf(stderr, "[dwgsim_core] #3 skip sequence '%s' as it is shorter than %d!\n", name, (l < opt->length[0]) ? opt->length[0] : opt->length[1]);
+              contig_i++;
+              continue;
+          }
+          else if (n_pairs < 0) { // NB: this should not happen
+              // not enough pairs
+              continue;
+          }
+          prev_skip = 0;
       }
-      else if (l < opt->length[0] || (0 < opt->length[1] && l < opt->length[1])) {
-          if(0 == prev_skip) fprintf(stderr, "\n");
-          prev_skip = 1;
-          fprintf(stderr, "[dwgsim_core] #3 skip sequence '%s' as it is shorter than %d!\n", name, (l < opt->length[0]) ? opt->length[0] : opt->length[1]);
-          contig_i++;
-          continue;
-      }
-      else if (n_pairs < 0) { // NB: this should not happen
-          // not enough pairs
-          continue;
-      }
-      prev_skip = 0;
 
       // generate mutations and print them out
       mutseq[0] = mutseq_init(); mutseq[1] = mutseq_init();
       mut_diref(opt, &seq, mutseq[0], mutseq[1], contig_i, muts_input);
       mut_print(name, &seq, mutseq[0], mutseq[1], opt->fp_mut, opt->fp_vcf);
 
-      for (ii = 0; ii != n_pairs; ++ii, ++ctr) { // the core loop
-          if(0 == (ctr % 10000)) {
-              fprintf(stderr, "\r[dwgsim_core] %llu",
-                      (unsigned long long int)ctr);
-          }
-          double ran;
-          int d, pos, s[2], strand[2];
-          int n_sub[2], n_indel[2], n_err[2], ext_coor[2]={0,0}, j, k;
-          int n_sub_first[2], n_indel_first[2], n_err_first[2]; // need this for SOLID data
-          int c1, c2, c;
+      if(0 == opt->muts_only) {
+          for (ii = 0; ii != n_pairs; ++ii, ++ctr) { // the core loop
+              if(0 == (ctr % 10000)) {
+                  fprintf(stderr, "\r[dwgsim_core] %llu",
+                          (unsigned long long int)ctr);
+              }
+              double ran;
+              int d, pos, s[2], strand[2];
+              int n_sub[2], n_indel[2], n_err[2], ext_coor[2]={0,0}, j, k;
+              int n_sub_first[2], n_indel_first[2], n_err_first[2]; // need this for SOLID data
+              int c1, c2, c;
 
-          s[0] = size[0]; s[1] = size[1];
+              s[0] = size[0]; s[1] = size[1];
 
-          if(opt->rand_read < drand48()) { 
+              if(opt->rand_read < drand48()) { 
 
-              if(NULL == regions_bed) {
-                  do { // avoid boundary failure
-                      if(0 < s[1]) { // paired end/mate pair
-                          ran = ran_normal();
-                          ran = ran * opt->std_dev + opt->dist;
-                          d = (int)(ran + 0.5);
-                      }
-                      else {
-                          d = 0;
-                      }
-                      pos = (int)((l - d + 1) * drand48());
-                  } while (pos < 0 
-                           || pos >= seq.l 
-                           || pos + d - 1 >= seq.l 
-                           || (0 < s[1] && 0 == opt->is_inner && ((0 < s[0] && d <= s[1]) || (d <= s[0] && 0 < s[1]))));
-              } 
-              else {
-                  do { // avoid boundary failure
-                      if(0 < s[1]) {
-                          ran = ran_normal();
-                          ran = ran * opt->std_dev + opt->dist;
-                          d = (int)(ran + 0.5);
-                      }
-                      else {
-                          d = 0;
-                      }
-                      pos = (int)((l - d + 1) * drand48());
-                      // convert in the bed file
-                      for(i=0;i<regions_bed->n;i++) { // TODO: regions are in sorted order... so optimize
-                          if(contig_i == regions_bed->contig[i]) {
-                              j = regions_bed->end[i] - regions_bed->start[i] + 1;
-                              if(pos < j) {
-                                  pos = regions_bed->start[i] + pos - 1; // zero-based
-                                  break;
+                  if(NULL == regions_bed) {
+                      do { // avoid boundary failure
+                          if(0 < s[1]) { // paired end/mate pair
+                              ran = ran_normal();
+                              ran = ran * opt->std_dev + opt->dist;
+                              d = (int)(ran + 0.5);
+                          }
+                          else {
+                              d = 0;
+                          }
+                          pos = (int)((l - d + 1) * drand48());
+                      } while (pos < 0 
+                               || pos >= seq.l 
+                               || pos + d - 1 >= seq.l 
+                               || (0 < s[1] && 0 == opt->is_inner && ((0 < s[0] && d <= s[1]) || (d <= s[0] && 0 < s[1]))));
+                  } 
+                  else {
+                      do { // avoid boundary failure
+                          if(0 < s[1]) {
+                              ran = ran_normal();
+                              ran = ran * opt->std_dev + opt->dist;
+                              d = (int)(ran + 0.5);
+                          }
+                          else {
+                              d = 0;
+                          }
+                          pos = (int)((l - d + 1) * drand48());
+                          // convert in the bed file
+                          for(i=0;i<regions_bed->n;i++) { // TODO: regions are in sorted order... so optimize
+                              if(contig_i == regions_bed->contig[i]) {
+                                  j = regions_bed->end[i] - regions_bed->start[i] + 1;
+                                  if(pos < j) {
+                                      pos = regions_bed->start[i] + pos - 1; // zero-based
+                                      break;
+                                  }
+                                  else {
+                                      pos -= j;
+                                  }
+                              }
+                          }
+                      } while (pos < 0 
+                               || pos >= seq.l 
+                               || pos + d - 1 >= seq.l 
+                               || (0 < s[1] && 0 == opt->is_inner && ((0 < s[0] && d <= s[1]) || (d <= s[0] && 0 < s[1])))
+                               || 0 == regions_bed_query(regions_bed, contig_i, pos, pos + s[0] + s[1] + d - 1));
+                  }
+
+                  // generate the read sequences
+                  mutseq_t *currseq = mutseq[drand48()<opt->mut_freq?0:1]; // haplotype from which the reads are generated
+                  n_sub[0] = n_sub[1] = n_indel[0] = n_indel[1] = n_err[0] = n_err[1] = 0;
+                  n_sub_first[0] = n_sub_first[1] = n_indel_first[0] = n_indel_first[1] = n_err_first[0] = n_err_first[1] = 0;
+                  num_n[0]=num_n[1]=0;
+
+                  // strand
+                  if(2 == opt->strandedness || (0 == opt->strandedness && ILLUMINA == opt->data_type)) {
+                      // opposite strand by default for Illumina
+                      strand[0] = 0; strand[1] = 1; 
+                  }
+                  else if(1 == opt->strandedness || (0 == opt->strandedness && (SOLID == opt->data_type || IONTORRENT == opt->data_type))) {
+                      // same strands by default for SOLiD
+                      strand[0] = 0; strand[1] = 0; 
+                  }
+                  else {
+                      // should not reach here
+                      assert(1 == 0);
+                  }
+                  if (drand48() < 0.5) { // which strand ?
+                      // Flip strands 
+                      strand[0] = (1 + strand[0]) % 2;
+                      strand[1] = (1 + strand[1]) % 2;
+                  }
+
+                  // generate the reads in base space
+                  if(0 < s[1]) { // paired end or mate pair
+                      if(strand[0] == strand[1]) { // same strand
+                          if(0 == strand[0]) { // + strand
+                              /*
+                               * 5' E2 -----> .... E1 -----> 3'
+                               * 3'           ....           5'
+                               */
+                              if(0 == opt->is_inner) {
+                                  __gen_read(0, pos + d - s[0], ++i); 
                               }
                               else {
-                                  pos -= j;
+                                  __gen_read(0, pos + s[1] + d, ++i); 
+                              }
+                              __gen_read(1, pos, ++i);
+                          }
+                          else { // - strand
+                              /*
+                               * 3'           ....            5'
+                               * 5' <----- E1 .... <----- E2  3'
+                               */
+                              __gen_read(0, pos + s[0], --i);
+                              if(0 == opt->is_inner) {
+                                  __gen_read(1, pos + d, --i);
+                              }
+                              else {
+                                  __gen_read(1, pos + s[0] + d + s[1], --i);
                               }
                           }
                       }
-                  } while (pos < 0 
-                           || pos >= seq.l 
-                           || pos + d - 1 >= seq.l 
-                           || (0 < s[1] && 0 == opt->is_inner && ((0 < s[0] && d <= s[1]) || (d <= s[0] && 0 < s[1])))
-                           || 0 == regions_bed_query(regions_bed, contig_i, pos, pos + s[0] + s[1] + d - 1));
-              }
-
-              // generate the read sequences
-              mutseq_t *currseq = mutseq[drand48()<opt->mut_freq?0:1]; // haplotype from which the reads are generated
-              n_sub[0] = n_sub[1] = n_indel[0] = n_indel[1] = n_err[0] = n_err[1] = 0;
-              n_sub_first[0] = n_sub_first[1] = n_indel_first[0] = n_indel_first[1] = n_err_first[0] = n_err_first[1] = 0;
-              num_n[0]=num_n[1]=0;
-
-              // strand
-              if(2 == opt->strandedness || (0 == opt->strandedness && ILLUMINA == opt->data_type)) {
-                  // opposite strand by default for Illumina
-                  strand[0] = 0; strand[1] = 1; 
-              }
-              else if(1 == opt->strandedness || (0 == opt->strandedness && (SOLID == opt->data_type || IONTORRENT == opt->data_type))) {
-                  // same strands by default for SOLiD
-                  strand[0] = 0; strand[1] = 0; 
-              }
-              else {
-                  // should not reach here
-                  assert(1 == 0);
-              }
-              if (drand48() < 0.5) { // which strand ?
-                  // Flip strands 
-                  strand[0] = (1 + strand[0]) % 2;
-                  strand[1] = (1 + strand[1]) % 2;
-              }
-
-              // generate the reads in base space
-              if(0 < s[1]) { // paired end or mate pair
-                  if(strand[0] == strand[1]) { // same strand
-                      if(0 == strand[0]) { // + strand
-                          /*
-                           * 5' E2 -----> .... E1 -----> 3'
-                           * 3'           ....           5'
-                           */
-                          if(0 == opt->is_inner) {
-                              __gen_read(0, pos + d - s[0], ++i); 
+                      else { // opposite strand
+                          if(0 == strand[0]) { // + strand
+                              /*
+                               * 5' E1 -----> ....           3'
+                               * 3'           .... <----- E2 5'
+                               */
+                              __gen_read(0, pos, ++i);
+                              if(0 == opt->is_inner) {
+                                  __gen_read(1, pos + d, --i);
+                              }
+                              else {
+                                  __gen_read(1, pos + s[0] + d + s[1], --i);
+                              }
                           }
-                          else {
-                              __gen_read(0, pos + s[1] + d, ++i); 
-                          }
-                          __gen_read(1, pos, ++i);
-                      }
-                      else { // - strand
-                          /*
-                           * 3'           ....            5'
-                           * 5' <----- E1 .... <----- E2  3'
-                           */
-                          __gen_read(0, pos + s[0], --i);
-                          if(0 == opt->is_inner) {
-                              __gen_read(1, pos + d, --i);
-                          }
-                          else {
-                              __gen_read(1, pos + s[0] + d + s[1], --i);
+                          else { // - strand
+                              /*
+                               * 5' E2 -----> ....           3'
+                               * 3'           .... <----- E1 5'
+                               */
+                              if(0 == opt->is_inner) {
+                                  __gen_read(0, pos + d, --i);
+                              }
+                              else {
+                                  __gen_read(0, pos + s[1] + d + s[0], --i); 
+                              }
+                              __gen_read(1, pos, i++);
                           }
                       }
                   }
-                  else { // opposite strand
-                      if(0 == strand[0]) { // + strand
-                          /*
-                           * 5' E1 -----> ....           3'
-                           * 3'           .... <----- E2 5'
-                           */
-                          __gen_read(0, pos, ++i);
-                          if(0 == opt->is_inner) {
-                              __gen_read(1, pos + d, --i);
-                          }
-                          else {
-                              __gen_read(1, pos + s[0] + d + s[1], --i);
-                          }
+                  else { // fragment
+                      if(0 == strand[0]) {
+                          __gen_read(0, pos, ++i); // + strand
                       }
-                      else { // - strand
-                          /*
-                           * 5' E2 -----> ....           3'
-                           * 3'           .... <----- E1 5'
-                           */
-                          if(0 == opt->is_inner) {
-                              __gen_read(0, pos + d, --i);
-                          }
-                          else {
-                              __gen_read(0, pos + s[1] + d + s[0], --i); 
-                          }
-                          __gen_read(1, pos, i++);
+                      else {
+                          __gen_read(0, pos + s[0] - 1, --i); // - strand
                       }
                   }
-              }
-              else { // fragment
-                  if(0 == strand[0]) {
-                      __gen_read(0, pos, ++i); // + strand
-                  }
-                  else {
-                      __gen_read(0, pos + s[0] - 1, --i); // - strand
-                  }
-              }
 
-              // Count # of Ns
-              for (j = 0; j < 2; ++j) {
-                  num_n[j]=0;
-                  if(0 < s[j]) {
-                      for (i = 0; i < s[j]; ++i) {
-                          if(tmp_seq[j][i] == 4) num_n[j]++;
-                      }
-                  }
-              }
-
-              if (ext_coor[0] < 0 || ext_coor[1] < 0 || opt->max_n < num_n[0] || opt->max_n < num_n[1]) { // fail to generate the read(s)
-                  --ii;
-                  --ctr;
-                  continue;
-              }
-
-              if(SOLID == opt->data_type) {
-                  // Convert to color sequence, use the first base as the adaptor
+                  // Count # of Ns
                   for (j = 0; j < 2; ++j) {
+                      num_n[j]=0;
                       if(0 < s[j]) {
-                          c1 = 0; // adaptor 
                           for (i = 0; i < s[j]; ++i) {
-                              c2 = tmp_seq[j][i]; // current base
-                              c = __gf_add(c1, c2);
-                              tmp_seq[j][i] = c;
-                              c1 = c2; // save previous base
+                              if(tmp_seq[j][i] == 4) num_n[j]++;
                           }
                       }
                   }
-              }
 
-              // generate sequencing errors
-              if(IONTORRENT == opt->data_type) {
-                  s[0] = generate_errors_flows(opt, &tmp_seq[0], &tmp_seq_flow_mask[0], &tmp_seq_mem[0], s[0], strand[0], e[0]->start, &n_err[0]);
-                  s[1] = generate_errors_flows(opt, &tmp_seq[1], &tmp_seq_flow_mask[1], &tmp_seq_mem[1], s[1], strand[1], e[1]->start, &n_err[1]);
-              }
-              else { // Illumina/SOLiD
-                  if(0 < s[0]) {
-                      if(0 == strand[0]) { 
-                          __gen_errors_mismatches(tmp_seq, 0, 0, ++i, s[0]); 
-                      }
-                      else { 
-                          __gen_errors_mismatches(tmp_seq, 0, s[0]-1, --i, s[0]); 
-                      }
-                  }
-                  if(0 < s[1]) {
-                      if(0 == strand[1]) { 
-                          __gen_errors_mismatches(tmp_seq, 1, 0, ++i, s[1]); 
-                      }
-                      else { 
-                          __gen_errors_mismatches(tmp_seq, 1, s[1]-1, --i, s[1]); 
-                      }
-                  }
-              }
-
-              // print
-              for (j = 0; j < 2; ++j) {
-                  if(s[j] <= 0) {
+                  if (ext_coor[0] < 0 || ext_coor[1] < 0 || opt->max_n < num_n[0] || opt->max_n < num_n[1]) { // fail to generate the read(s)
+                      --ii;
+                      --ctr;
                       continue;
                   }
-                  if(IONTORRENT == opt->data_type && qstr_l < s[j]) {
-                      qstr_l = s[j];
-                      qstr = realloc(qstr, (1+qstr_l) * sizeof(char));
-                  }
-                  if(NULL != opt->fixed_quality) {
-                      for (i = 0; i < s[j]; ++i) {
-                          qstr[i] = opt->fixed_quality[0];
-                      }
-                  }
-                  else {
-                      for (i = 0; i < s[j]; ++i) {
-                          qstr[i] = (int)(-10.0 * log(e[j]->start + e[j]->by*i) / log(10.0) + 0.499) + 33;
-                      }
-                  }
-                  qstr[i] = 0;
-                  // BWA
-                  FILE *fpo = (0 == j) ? opt->fp_bwa1: opt->fp_bwa2;
-                  if(ILLUMINA == opt->data_type || IONTORRENT == opt->data_type) {
-                      fprintf(fpo, "@%s%s%s_%u_%u_%1u_%1u_%1u_%1u_%d:%d:%d_%d:%d:%d_%llx/%d\n", 
-                              (NULL == opt->read_prefix) ? "" : opt->read_prefix,
-                              (NULL == opt->read_prefix) ? "" : "_",
-                              name, ext_coor[0]+1, ext_coor[1]+1, strand[0], strand[1], 0, 0,
-                              n_err[0], n_sub[0], n_indel[0],
-                              n_err[1], n_sub[1],n_indel[1],
-                              (long long)ii, j+1);
-                      for (i = 0; i < s[j]; ++i)
-                        fputc("ACGTN"[(int)tmp_seq[j][i]], fpo);
-                      fprintf(fpo, "\n+\n%s\n", qstr);
-                  }
-                  else {
-                      // Note: BWA ignores the adapter and the first color, so this is a misrepresentation 
-                      // in samtools.  We must first skip the first color.  Basically, a 50 color read is a 
-                      // 49 color read for BWA.
-                      //
-                      // Note: BWA outputs F3 to read1, annotated as read "2", and outputs R3 to read2,
-                      // annotated as read "1".
-                      fprintf(fpo, "@%s%s%s_%u_%u_%1u_%1u_%1u_%1u_%d:%d:%d_%d:%d:%d_%llx/%d\n", 
-                              (NULL == opt->read_prefix) ? "" : opt->read_prefix,
-                              (NULL == opt->read_prefix) ? "" : "_",
-                              name, ext_coor[0]+1, ext_coor[1]+1, strand[0], strand[1], 0, 0,
-                              n_err[0] - n_err_first[0], n_sub[0] - n_sub_first[0], n_indel[0] - n_indel_first[0], 
-                              n_err[1] - n_err_first[1], n_sub[1] - n_sub_first[1], n_indel[1] - n_indel_first[1],
-                              (long long)ii, 2 - j);
-                      //fputc('A', fpo);
-                      for (i = 1; i < s[j]; ++i)
-                        fputc("ACGTN"[(int)tmp_seq[j][i]], fpo);
-                      fprintf(fpo, "\n+\n");
-                      for (i = 1; i < s[j]; ++i) 
-                        fputc(qstr[i], fpo);
-                      fprintf(fpo, "\n");
-                  }
 
-                  // BFAST output
-                  fprintf(opt->fp_bfast, "@%s%s%s_%u_%u_%1u_%1u_%1u_%1u_%d:%d:%d_%d:%d:%d_%llx\n", 
-                          (NULL == opt->read_prefix) ? "" : opt->read_prefix,
-                          (NULL == opt->read_prefix) ? "" : "_",
-                          name, ext_coor[0]+1, ext_coor[1]+1, strand[0], strand[1], 0, 0,
-                          n_err[0], n_sub[0], n_indel[0], n_err[1], n_sub[1], n_indel[1],
-                          (long long)ii);
-                  if(ILLUMINA == opt->data_type || IONTORRENT == opt->data_type) {
-                      for (i = 0; i < s[j]; ++i)
-                        fputc("ACGTN"[(int)tmp_seq[j][i]], opt->fp_bfast);
-                      fprintf(opt->fp_bfast, "\n+\n%s\n", qstr);
-                  }
-                  else {
-                      fputc('A', opt->fp_bfast);
-                      for (i = 0; i < s[j]; ++i)
-                        fputc("01234"[(int)tmp_seq[j][i]], opt->fp_bfast);
-                      fprintf(opt->fp_bfast, "\n+\n");
-                      for (i = 0; i < s[j]; ++i) 
-                        fputc(qstr[i], opt->fp_bfast);
-                      fprintf(opt->fp_bfast, "\n");
-                  }
-              }
-              n_sim++;
-          }
-          else { // random DNA read
-              for(j=0;j<2;j++) {
-                  if(s[j] <= 0) {
-                      continue;
-                  } 
-                  if(IONTORRENT == opt->data_type && qstr_l < s[j]) {
-                      qstr_l = s[j];
-                      qstr = realloc(qstr, (1+qstr_l) * sizeof(char));
-                  }
-                  // get random sequence
-                  for (i = 0; i < s[j]; ++i) {
-                      tmp_seq[j][i] = (int)(drand48() * 4.0) & 3;
-                  }
-                  if(NULL != opt->fixed_quality) {
-                      for (i = 0; i < s[j]; ++i) {
-                          qstr[i] = opt->fixed_quality[0];
-                      }
-                  }
-                  else {
-                      for (i = 0; i < s[j]; ++i) {
-                          qstr[i] = (int)(-10.0 * log(e[j]->start + e[j]->by*i) / log(10.0) + 0.499) + 33;
-                      }
-                  }
-                  qstr[i] = 0;
-                  if(SOLID == opt->data_type) { // convert to color space
-                      if(0 < s[j]) {
-                          c1 = 0; // adaptor 
-                          for (i = 0; i < s[j]; ++i) {
-                              c2 = tmp_seq[j][i]; // current base
-                              c = __gf_add(c1, c2);
-                              tmp_seq[j][i] = c;
-                              c1 = c2; // save previous base
+                  if(SOLID == opt->data_type) {
+                      // Convert to color sequence, use the first base as the adaptor
+                      for (j = 0; j < 2; ++j) {
+                          if(0 < s[j]) {
+                              c1 = 0; // adaptor 
+                              for (i = 0; i < s[j]; ++i) {
+                                  c2 = tmp_seq[j][i]; // current base
+                                  c = __gf_add(c1, c2);
+                                  tmp_seq[j][i] = c;
+                                  c1 = c2; // save previous base
+                              }
                           }
                       }
                   }
-                  // BWA
-                  FILE *fpo = (0 == j) ? opt->fp_bwa1: opt->fp_bwa2;
-                  if(ILLUMINA == opt->data_type || IONTORRENT == opt->data_type) {
-                      fprintf(fpo, "@%s%s%s_%u_%u_%1u_%1u_%1u_%1u_%d:%d:%d_%d:%d:%d_%llx/%d\n", 
+
+                  // generate sequencing errors
+                  if(IONTORRENT == opt->data_type) {
+                      s[0] = generate_errors_flows(opt, &tmp_seq[0], &tmp_seq_flow_mask[0], &tmp_seq_mem[0], s[0], strand[0], e[0]->start, &n_err[0]);
+                      s[1] = generate_errors_flows(opt, &tmp_seq[1], &tmp_seq_flow_mask[1], &tmp_seq_mem[1], s[1], strand[1], e[1]->start, &n_err[1]);
+                  }
+                  else { // Illumina/SOLiD
+                      if(0 < s[0]) {
+                          if(0 == strand[0]) { 
+                              __gen_errors_mismatches(tmp_seq, 0, 0, ++i, s[0]); 
+                          }
+                          else { 
+                              __gen_errors_mismatches(tmp_seq, 0, s[0]-1, --i, s[0]); 
+                          }
+                      }
+                      if(0 < s[1]) {
+                          if(0 == strand[1]) { 
+                              __gen_errors_mismatches(tmp_seq, 1, 0, ++i, s[1]); 
+                          }
+                          else { 
+                              __gen_errors_mismatches(tmp_seq, 1, s[1]-1, --i, s[1]); 
+                          }
+                      }
+                  }
+
+                  // print
+                  for (j = 0; j < 2; ++j) {
+                      if(s[j] <= 0) {
+                          continue;
+                      }
+                      if(IONTORRENT == opt->data_type && qstr_l < s[j]) {
+                          qstr_l = s[j];
+                          qstr = realloc(qstr, (1+qstr_l) * sizeof(char));
+                      }
+                      if(NULL != opt->fixed_quality) {
+                          for (i = 0; i < s[j]; ++i) {
+                              qstr[i] = opt->fixed_quality[0];
+                          }
+                      }
+                      else {
+                          for (i = 0; i < s[j]; ++i) {
+                              qstr[i] = (int)(-10.0 * log(e[j]->start + e[j]->by*i) / log(10.0) + 0.499) + 33;
+                          }
+                      }
+                      qstr[i] = 0;
+                      // BWA
+                      FILE *fpo = (0 == j) ? opt->fp_bwa1: opt->fp_bwa2;
+                      if(ILLUMINA == opt->data_type || IONTORRENT == opt->data_type) {
+                          fprintf(fpo, "@%s%s%s_%u_%u_%1u_%1u_%1u_%1u_%d:%d:%d_%d:%d:%d_%llx/%d\n", 
+                                  (NULL == opt->read_prefix) ? "" : opt->read_prefix,
+                                  (NULL == opt->read_prefix) ? "" : "_",
+                                  name, ext_coor[0]+1, ext_coor[1]+1, strand[0], strand[1], 0, 0,
+                                  n_err[0], n_sub[0], n_indel[0],
+                                  n_err[1], n_sub[1],n_indel[1],
+                                  (long long)ii, j+1);
+                          for (i = 0; i < s[j]; ++i)
+                            fputc("ACGTN"[(int)tmp_seq[j][i]], fpo);
+                          fprintf(fpo, "\n+\n%s\n", qstr);
+                      }
+                      else {
+                          // Note: BWA ignores the adapter and the first color, so this is a misrepresentation 
+                          // in samtools.  We must first skip the first color.  Basically, a 50 color read is a 
+                          // 49 color read for BWA.
+                          //
+                          // Note: BWA outputs F3 to read1, annotated as read "2", and outputs R3 to read2,
+                          // annotated as read "1".
+                          fprintf(fpo, "@%s%s%s_%u_%u_%1u_%1u_%1u_%1u_%d:%d:%d_%d:%d:%d_%llx/%d\n", 
+                                  (NULL == opt->read_prefix) ? "" : opt->read_prefix,
+                                  (NULL == opt->read_prefix) ? "" : "_",
+                                  name, ext_coor[0]+1, ext_coor[1]+1, strand[0], strand[1], 0, 0,
+                                  n_err[0] - n_err_first[0], n_sub[0] - n_sub_first[0], n_indel[0] - n_indel_first[0], 
+                                  n_err[1] - n_err_first[1], n_sub[1] - n_sub_first[1], n_indel[1] - n_indel_first[1],
+                                  (long long)ii, 2 - j);
+                          //fputc('A', fpo);
+                          for (i = 1; i < s[j]; ++i)
+                            fputc("ACGTN"[(int)tmp_seq[j][i]], fpo);
+                          fprintf(fpo, "\n+\n");
+                          for (i = 1; i < s[j]; ++i) 
+                            fputc(qstr[i], fpo);
+                          fprintf(fpo, "\n");
+                      }
+
+                      // BFAST output
+                      fprintf(opt->fp_bfast, "@%s%s%s_%u_%u_%1u_%1u_%1u_%1u_%d:%d:%d_%d:%d:%d_%llx\n", 
+                              (NULL == opt->read_prefix) ? "" : opt->read_prefix,
+                              (NULL == opt->read_prefix) ? "" : "_",
+                              name, ext_coor[0]+1, ext_coor[1]+1, strand[0], strand[1], 0, 0,
+                              n_err[0], n_sub[0], n_indel[0], n_err[1], n_sub[1], n_indel[1],
+                              (long long)ii);
+                      if(ILLUMINA == opt->data_type || IONTORRENT == opt->data_type) {
+                          for (i = 0; i < s[j]; ++i)
+                            fputc("ACGTN"[(int)tmp_seq[j][i]], opt->fp_bfast);
+                          fprintf(opt->fp_bfast, "\n+\n%s\n", qstr);
+                      }
+                      else {
+                          fputc('A', opt->fp_bfast);
+                          for (i = 0; i < s[j]; ++i)
+                            fputc("01234"[(int)tmp_seq[j][i]], opt->fp_bfast);
+                          fprintf(opt->fp_bfast, "\n+\n");
+                          for (i = 0; i < s[j]; ++i) 
+                            fputc(qstr[i], opt->fp_bfast);
+                          fprintf(opt->fp_bfast, "\n");
+                      }
+                  }
+                  n_sim++;
+              }
+              else { // random DNA read
+                  for(j=0;j<2;j++) {
+                      if(s[j] <= 0) {
+                          continue;
+                      } 
+                      if(IONTORRENT == opt->data_type && qstr_l < s[j]) {
+                          qstr_l = s[j];
+                          qstr = realloc(qstr, (1+qstr_l) * sizeof(char));
+                      }
+                      // get random sequence
+                      for (i = 0; i < s[j]; ++i) {
+                          tmp_seq[j][i] = (int)(drand48() * 4.0) & 3;
+                      }
+                      if(NULL != opt->fixed_quality) {
+                          for (i = 0; i < s[j]; ++i) {
+                              qstr[i] = opt->fixed_quality[0];
+                          }
+                      }
+                      else {
+                          for (i = 0; i < s[j]; ++i) {
+                              qstr[i] = (int)(-10.0 * log(e[j]->start + e[j]->by*i) / log(10.0) + 0.499) + 33;
+                          }
+                      }
+                      qstr[i] = 0;
+                      if(SOLID == opt->data_type) { // convert to color space
+                          if(0 < s[j]) {
+                              c1 = 0; // adaptor 
+                              for (i = 0; i < s[j]; ++i) {
+                                  c2 = tmp_seq[j][i]; // current base
+                                  c = __gf_add(c1, c2);
+                                  tmp_seq[j][i] = c;
+                                  c1 = c2; // save previous base
+                              }
+                          }
+                      }
+                      // BWA
+                      FILE *fpo = (0 == j) ? opt->fp_bwa1: opt->fp_bwa2;
+                      if(ILLUMINA == opt->data_type || IONTORRENT == opt->data_type) {
+                          fprintf(fpo, "@%s%s%s_%u_%u_%1u_%1u_%1u_%1u_%d:%d:%d_%d:%d:%d_%llx/%d\n", 
+                                  (NULL == opt->read_prefix) ? "" : opt->read_prefix,
+                                  (NULL == opt->read_prefix) ? "" : "_",
+                                  "rand", 0, 0, 0, 0, 1, 1,
+                                  0, 0, 0, 0, 0, 0,
+                                  (long long)ii,
+                                  j+1);
+                          for (i = 0; i < s[j]; ++i)
+                            fputc("ACGTN"[(int)tmp_seq[j][i]], fpo);
+                          fprintf(fpo, "\n+\n%s\n", qstr);
+                      }
+                      else {
+                          // Note: BWA ignores the adapter and the first color, so this is a misrepresentation 
+                          // in samtools.  We must first skip the first color.  Basically, a 50 color read is a 
+                          // 49 color read for BWA.
+                          //
+                          // Note: BWA outputs F3 to read1, annotated as read "2", and outputs R3 to read2,
+                          // annotated as read "1".
+                          fprintf(fpo, "@%s%s%s_%u_%u_%1u_%1u_%1u_%1u_%d:%d:%d_%d:%d:%d_%llx/%d\n", 
+                                  (NULL == opt->read_prefix) ? "" : opt->read_prefix,
+                                  (NULL == opt->read_prefix) ? "" : "_",
+                                  "rand", 0, 0, 0, 0, 1, 1,
+                                  0, 0, 0, 0, 0, 0,
+                                  (long long)ii, 2 - j);
+                          //fputc('A', fpo);
+                          for (i = 1; i < s[j]; ++i)
+                            fputc("ACGTN"[(int)tmp_seq[j][i]], fpo);
+                          fprintf(fpo, "\n+\n");
+                          for (i = 1; i < s[j]; ++i) 
+                            fputc(qstr[i], fpo);
+                          fprintf(fpo, "\n");
+                      }
+
+                      // BFAST output
+                      fprintf(opt->fp_bfast, "@%s%s%s_%u_%u_%1u_%1u_%1u_%1u_%d:%d:%d_%d:%d:%d_%llx\n", 
                               (NULL == opt->read_prefix) ? "" : opt->read_prefix,
                               (NULL == opt->read_prefix) ? "" : "_",
                               "rand", 0, 0, 0, 0, 1, 1,
                               0, 0, 0, 0, 0, 0,
-                              (long long)ii,
-                              j+1);
-                      for (i = 0; i < s[j]; ++i)
-                        fputc("ACGTN"[(int)tmp_seq[j][i]], fpo);
-                      fprintf(fpo, "\n+\n%s\n", qstr);
+                              (long long)ii);
+                      if(ILLUMINA == opt->data_type || IONTORRENT == opt->data_type) {
+                          for (i = 0; i < s[j]; ++i)
+                            fputc("ACGTN"[(int)tmp_seq[j][i]], opt->fp_bfast);
+                          fprintf(opt->fp_bfast, "\n+\n%s\n", qstr);
+                      }
+                      else {
+                          fputc('A', opt->fp_bfast);
+                          for (i = 0; i < s[j]; ++i)
+                            fputc("01234"[(int)tmp_seq[j][i]], opt->fp_bfast);
+                          fprintf(opt->fp_bfast, "\n+\n");
+                          for (i = 0; i < s[j]; ++i) 
+                            fputc(qstr[i], opt->fp_bfast);
+                          fprintf(opt->fp_bfast, "\n");
+                      }
                   }
-                  else {
-                      // Note: BWA ignores the adapter and the first color, so this is a misrepresentation 
-                      // in samtools.  We must first skip the first color.  Basically, a 50 color read is a 
-                      // 49 color read for BWA.
-                      //
-                      // Note: BWA outputs F3 to read1, annotated as read "2", and outputs R3 to read2,
-                      // annotated as read "1".
-                      fprintf(fpo, "@%s%s%s_%u_%u_%1u_%1u_%1u_%1u_%d:%d:%d_%d:%d:%d_%llx/%d\n", 
-                              (NULL == opt->read_prefix) ? "" : opt->read_prefix,
-                              (NULL == opt->read_prefix) ? "" : "_",
-                              "rand", 0, 0, 0, 0, 1, 1,
-                              0, 0, 0, 0, 0, 0,
-                              (long long)ii, 2 - j);
-                      //fputc('A', fpo);
-                      for (i = 1; i < s[j]; ++i)
-                        fputc("ACGTN"[(int)tmp_seq[j][i]], fpo);
-                      fprintf(fpo, "\n+\n");
-                      for (i = 1; i < s[j]; ++i) 
-                        fputc(qstr[i], fpo);
-                      fprintf(fpo, "\n");
-                  }
-
-                  // BFAST output
-                  fprintf(opt->fp_bfast, "@%s%s%s_%u_%u_%1u_%1u_%1u_%1u_%d:%d:%d_%d:%d:%d_%llx\n", 
-                          (NULL == opt->read_prefix) ? "" : opt->read_prefix,
-                          (NULL == opt->read_prefix) ? "" : "_",
-                          "rand", 0, 0, 0, 0, 1, 1,
-                          0, 0, 0, 0, 0, 0,
-                          (long long)ii);
-                  if(ILLUMINA == opt->data_type || IONTORRENT == opt->data_type) {
-                      for (i = 0; i < s[j]; ++i)
-                        fputc("ACGTN"[(int)tmp_seq[j][i]], opt->fp_bfast);
-                      fprintf(opt->fp_bfast, "\n+\n%s\n", qstr);
-                  }
-                  else {
-                      fputc('A', opt->fp_bfast);
-                      for (i = 0; i < s[j]; ++i)
-                        fputc("01234"[(int)tmp_seq[j][i]], opt->fp_bfast);
-                      fprintf(opt->fp_bfast, "\n+\n");
-                      for (i = 0; i < s[j]; ++i) 
-                        fputc(qstr[i], opt->fp_bfast);
-                      fprintf(opt->fp_bfast, "\n");
-                  }
+                  n_sim++;
               }
-              n_sim++;
           }
+          fprintf(stderr, "\r[dwgsim_core] %llu",
+                  (unsigned long long int)ctr);
       }
       mutseq_destroy(mutseq[0]);
       mutseq_destroy(mutseq[1]);
-      fprintf(stderr, "\r[dwgsim_core] %llu",
-              (unsigned long long int)ctr);
       contig_i++;
   }
-  fprintf(stderr, "\n[dwgsim_core] Complete!\n");
+  if(0 == opt->muts_only) {
+      fprintf(stderr, "\n[dwgsim_core] Complete!\n");
+  }
+
   free(seq.s); free(qstr);
   free(tmp_seq[0]); free(tmp_seq[1]);
   if(IONTORRENT == opt->data_type) {
@@ -1021,18 +1030,22 @@ int main(int argc, char *argv[])
   opt->fp_mut = xopen(fn_tmp, "w");
   strcpy(fn_tmp, argv[optind+1]); strcat(fn_tmp, ".mutations.vcf");
   opt->fp_vcf = xopen(fn_tmp, "w");
-  strcpy(fn_tmp, argv[optind+1]); strcat(fn_tmp, ".bfast.fastq");
-  opt->fp_bfast = xopen(fn_tmp, "w");
-  strcpy(fn_tmp, argv[optind+1]); strcat(fn_tmp, ".bwa.read1.fastq");
-  opt->fp_bwa1 = xopen(fn_tmp, "w");
-  strcpy(fn_tmp, argv[optind+1]); strcat(fn_tmp, ".bwa.read2.fastq");
-  opt->fp_bwa2 = xopen(fn_tmp, "w");
+  if(0 == opt->muts_only) {
+      strcpy(fn_tmp, argv[optind+1]); strcat(fn_tmp, ".bfast.fastq");
+      opt->fp_bfast = xopen(fn_tmp, "w");
+      strcpy(fn_tmp, argv[optind+1]); strcat(fn_tmp, ".bwa.read1.fastq");
+      opt->fp_bwa1 = xopen(fn_tmp, "w");
+      strcpy(fn_tmp, argv[optind+1]); strcat(fn_tmp, ".bwa.read2.fastq");
+      opt->fp_bwa2 = xopen(fn_tmp, "w");
+  }
 
   // Run simulation
   dwgsim_core(opt);
 
   // Close files
-  fclose(opt->fp_fa); fclose(opt->fp_bfast); fclose(opt->fp_bwa1); fclose(opt->fp_bwa2); 
+  if(0 == opt->muts_only) {
+      fclose(opt->fp_fa); fclose(opt->fp_bfast); fclose(opt->fp_bwa1); fclose(opt->fp_bwa2); 
+  }
   if(NULL != opt->fp_fai) fclose(opt->fp_fai);
   fclose(opt->fp_mut);
   fclose(opt->fp_vcf);

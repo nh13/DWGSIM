@@ -29,6 +29,7 @@ typedef struct {
     int32_t use_base_error;
     int32_t is_hap;
     int32_t seed;
+    int32_t muts_only;
     char *fixed_quality;
     char *fn_muts_input;
     int32_t fn_muts_input_type;
