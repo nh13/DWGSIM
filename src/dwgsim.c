@@ -421,6 +421,7 @@ void dwgsim_core(dwgsim_opt_t * opt)
   uint64_t tot_len, ii=0, ctr=0;
   int i, l, m, n_ref, contig_i;
   char name[1024], *qstr;
+  int32_t name_len_max=0;
   int size[2], prev_skip=0, qstr_l=0;
   int num_n[2];
   uint8_t *tmp_seq[2]={NULL,NULL};
@@ -505,10 +506,25 @@ void dwgsim_core(dwgsim_opt_t * opt)
   if(0 == opt->muts_only) {
       fprintf(stderr, "[dwgsim_core] Currently on: \n0");
   }
+  else {
+      fprintf(stderr, "[dwgsim_core] Currently on:");
+  }
   contig_i = 0;
   while ((l = seq_read_fasta(opt->fp_fa, &seq, name, 0)) >= 0) {
       int64_t n_pairs;
       n_ref--;
+      
+      if(1 == opt->muts_only) {
+          fprintf(stderr, "\r[dwgsim_core] Currently on: %s", name);
+          if(name_len_max < strlen(name)) {
+              name_len_max = strlen(name);
+          } 
+          else {
+              for(i=0;i<name_len_max-strlen(name);i++) {
+                  fputc(' ', stderr);
+              }
+          }
+      }
 
       if(0 == opt->muts_only) {
           if(0 == n_ref && opt->C < 0) {
@@ -988,9 +1004,7 @@ void dwgsim_core(dwgsim_opt_t * opt)
       mutseq_destroy(mutseq[1]);
       contig_i++;
   }
-  if(0 == opt->muts_only) {
-      fprintf(stderr, "\n[dwgsim_core] Complete!\n");
-  }
+  fprintf(stderr, "\n[dwgsim_core] Complete!\n");
 
   free(seq.s); free(qstr);
   free(tmp_seq[0]); free(tmp_seq[1]);
