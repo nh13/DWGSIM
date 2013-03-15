@@ -607,7 +607,7 @@ void dwgsim_core(dwgsim_opt_t * opt)
       // generate mutations and print them out
       mutseq[0] = mutseq_init(); mutseq[1] = mutseq_init();
       mut_diref(opt, &seq, mutseq[0], mutseq[1], contig_i, muts_input);
-      mut_print(name, &seq, mutseq[0], mutseq[1], opt->fp_mut, opt->fp_vcf);
+      mut_print(name, &seq, mutseq[0], mutseq[1], opt->fp_mut, opt->fp_vcf, (0 == contig_i) ? 1 : 0);
 
       if(0 == opt->muts_only) {
           for (ii = 0; ii != n_pairs; ++ii, ++ctr) { // the core loop

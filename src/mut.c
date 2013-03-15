@@ -747,13 +747,15 @@ void mut_diref(dwgsim_opt_t *opt, const seq_t *seq, mutseq_t *hap1, mutseq_t *ha
   mut_debug(seq, hap1, hap2);
 }
 
-void mut_print(const char *name, const seq_t *seq, mutseq_t *hap1, mutseq_t *hap2, FILE *fpout_txt, FILE *fpout_vcf)
+void mut_print(const char *name, const seq_t *seq, mutseq_t *hap1, mutseq_t *hap2, FILE *fpout_txt, FILE *fpout_vcf, int32_t header)
 {
   int32_t i, j, hap;
   
   // header
-  fprintf(fpout_vcf, "##fileformat=VCFv4.1\n");
-  fprintf(fpout_vcf, "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n");
+  if(1 == header) {
+      fprintf(fpout_vcf, "##fileformat=VCFv4.1\n");
+      fprintf(fpout_vcf, "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n");
+  }
   
   // body
   mut_t mut_prev[2] = {NOCHANGE,NOCHANGE}; // for deletions
