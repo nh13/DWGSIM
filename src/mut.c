@@ -773,19 +773,21 @@ void mut_print(const char *name, const seq_t *seq, mutseq_t *hap1, mutseq_t *hap
                   fprintf(fpout_vcf, "%s\t%d\t.\t%c\t%c\t100\tPASS\tAF=1.0;pl=3;mt=SUBSTITUTE\n", name, i+1, "ACGTN"[c[0]], "ACGTN"[c[1]&0xf]);
               } else if ((c[1]&mutmsk) == DELETE) { // del
                   fprintf(fpout_txt, "%c\t-\t3\n", "ACGTN"[c[0]]);
-                  fprintf(fpout_vcf, "%s\t%d\t.\t", name, i);
-                  if (0 < i) fputc("ACGTN"[nst_nt4_table[(int)seq->s[i-1]]], fpout_vcf);
-                  for (j = i; j < seq->l && (c[1] & mut_and_type_mask) == (c[2] & mut_and_type_mask) && (c[1]&mutmsk) == DELETE; ++j) {
-                      fputc("ACGTN"[c[0]], fpout_vcf);
-                      // NB: this modifies 'c'
-                      if (j+1 < seq->l) { 
-                          c[0] = nst_nt4_table[(int)seq->s[j+1]];
-                          c[1] = hap1->s[j+1]; c[2] = hap2->s[j+1];
+                  if(0 == mut_prev[0] || 0 == mut_prev[1]) {
+                      fprintf(fpout_vcf, "%s\t%d\t.\t", name, i);
+                      if (0 < i) fputc("ACGTN"[nst_nt4_table[(int)seq->s[i-1]]], fpout_vcf);
+                      for (j = i; j < seq->l && (c[1] & mut_and_type_mask) == (c[2] & mut_and_type_mask) && (c[1]&mutmsk) == DELETE; ++j) {
+                          fputc("ACGTN"[c[0]], fpout_vcf);
+                          // NB: this modifies 'c'
+                          if (j+1 < seq->l) { 
+                              c[0] = nst_nt4_table[(int)seq->s[j+1]];
+                              c[1] = hap1->s[j+1]; c[2] = hap2->s[j+1];
+                          }
                       }
+                      if (0 < i) fprintf(fpout_vcf, "\t%c", "ACGTN"[nst_nt4_table[(int)seq->s[i-1]]]);
+                      else fprintf(fpout_vcf, "\t.");
+                      fprintf(fpout_vcf, "\t100\tPASS\tAF=1.0;pl=3;mt=DELETE\n"); 
                   }
-                  if (0 < i) fprintf(fpout_vcf, "\t%c", "ACGTN"[nst_nt4_table[(int)seq->s[i-1]]]);
-                  else fprintf(fpout_vcf, "\t.");
-                  fprintf(fpout_vcf, "\t100\tPASS\tAF=1.0;pl=3;mt=DELETE\n"); 
                   // NB: convert back 'c'
                   c[0] = nst_nt4_table[(int)seq->s[i]];
                   c[1] = hap1->s[i]; c[2] = hap2->s[i];
@@ -805,37 +807,41 @@ void mut_print(const char *name, const seq_t *seq, mutseq_t *hap1, mutseq_t *hap
                   else fprintf(fpout_vcf, "%s\t%d\t.\t%c\t%c\t100\tPASS\tAF=0.5;pl=2;mt=SUBSTITUTE\n", name, i+1, "ACGTN"[c[0]], "ACGTN"[c[2]&0xf]);
               } else if ((c[1]&mutmsk) == DELETE) {
                   fprintf(fpout_txt, "%c\t-\t1\n", "ACGTN"[c[0]]);
-                  fprintf(fpout_vcf, "%s\t%d\t.\t", name, i);
-                  if (0 < i) fputc("ACGTN"[nst_nt4_table[(int)seq->s[i-1]]], fpout_vcf);
-                  for (j = i; j < seq->l && (c[1] & mut_and_type_mask) != (c[2] & mut_and_type_mask) && (c[1]&mutmsk) == DELETE; ++j) {
-                      fputc("ACGTN"[c[0]], fpout_vcf);
-                      // NB: this modifies 'c'
-                      if (j+1 < seq->l) { 
-                          c[0] = nst_nt4_table[(int)seq->s[j+1]];
-                          c[1] = hap1->s[j+1]; c[2] = hap2->s[j+1];
+                  if(0 == mut_prev[0]) {
+                      fprintf(fpout_vcf, "%s\t%d\t.\t", name, i);
+                      if (0 < i) fputc("ACGTN"[nst_nt4_table[(int)seq->s[i-1]]], fpout_vcf);
+                      for (j = i; j < seq->l && (c[1] & mut_and_type_mask) != (c[2] & mut_and_type_mask) && (c[1]&mutmsk) == DELETE; ++j) {
+                          fputc("ACGTN"[c[0]], fpout_vcf);
+                          // NB: this modifies 'c'
+                          if (j+1 < seq->l) { 
+                              c[0] = nst_nt4_table[(int)seq->s[j+1]];
+                              c[1] = hap1->s[j+1]; c[2] = hap2->s[j+1];
+                          }
                       }
+                      if (0 < i) fprintf(fpout_vcf, "\t%c", "ACGTN"[nst_nt4_table[(int)seq->s[i-1]]]);
+                      else fprintf(fpout_vcf, "\t.");
+                      fprintf(fpout_vcf, "\t100\tPASS\tAF=1.0;pl=1;mt=DELETE\n"); 
                   }
-                  if (0 < i) fprintf(fpout_vcf, "\t%c", "ACGTN"[nst_nt4_table[(int)seq->s[i-1]]]);
-                  else fprintf(fpout_vcf, "\t.");
-                  fprintf(fpout_vcf, "\t100\tPASS\tAF=1.0;pl=1;mt=DELETE\n"); 
                   // NB: convert back 'c'
                   c[0] = nst_nt4_table[(int)seq->s[i]];
                   c[1] = hap1->s[i]; c[2] = hap2->s[i];
               } else if ((c[2]&mutmsk) == DELETE) {
                   fprintf(fpout_txt, "%c\t-\t2\n", "ACGTN"[c[0]]);
-                  fprintf(fpout_vcf, "%s\t%d\t.\t", name, i);
-                  if (0 < i) fputc("ACGTN"[nst_nt4_table[(int)seq->s[i-1]]], fpout_vcf);
-                  for (j = i; j < seq->l && (c[1] & mut_and_type_mask) != (c[2] & mut_and_type_mask) && (c[2]&mutmsk) == DELETE; ++j) {
-                      fputc("ACGTN"[c[0]], fpout_vcf);
-                      // NB: this modifies 'c'
-                      if (j+1 < seq->l) { 
-                          c[0] = nst_nt4_table[(int)seq->s[j+1]];
-                          c[1] = hap1->s[j+1]; c[2] = hap2->s[j+1];
+                  if(0 == mut_prev[1]) {
+                      fprintf(fpout_vcf, "%s\t%d\t.\t", name, i);
+                      if (0 < i) fputc("ACGTN"[nst_nt4_table[(int)seq->s[i-1]]], fpout_vcf);
+                      for (j = i; j < seq->l && (c[1] & mut_and_type_mask) != (c[2] & mut_and_type_mask) && (c[2]&mutmsk) == DELETE; ++j) {
+                          fputc("ACGTN"[c[0]], fpout_vcf);
+                          // NB: this modifies 'c'
+                          if (j+1 < seq->l) { 
+                              c[0] = nst_nt4_table[(int)seq->s[j+1]];
+                              c[1] = hap1->s[j+1]; c[2] = hap2->s[j+1];
+                          }
                       }
+                      if (0 < i) fprintf(fpout_vcf, "\t%c", "ACGTN"[nst_nt4_table[(int)seq->s[i-1]]]);
+                      else fprintf(fpout_vcf, "\t.");
+                      fprintf(fpout_vcf, "\t100\tPASS\tAF=1.0;pl=2;mt=DELETE\n"); 
                   }
-                  if (0 < i) fprintf(fpout_vcf, "\t%c", "ACGTN"[nst_nt4_table[(int)seq->s[i-1]]]);
-                  else fprintf(fpout_vcf, "\t.");
-                  fprintf(fpout_vcf, "\t100\tPASS\tAF=1.0;pl=2;mt=DELETE\n"); 
                   // NB: convert back 'c'
                   c[0] = nst_nt4_table[(int)seq->s[i]];
                   c[1] = hap1->s[i]; c[2] = hap2->s[i];
