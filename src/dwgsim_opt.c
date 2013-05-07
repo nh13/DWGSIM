@@ -63,6 +63,7 @@ dwgsim_opt_t* dwgsim_opt_init()
   opt->seed = -1;
   opt->muts_only = 0;
   opt->fixed_quality = NULL;
+  opt->quality_std = 2.0;
   opt->fn_muts_input = NULL;
   opt->fn_muts_input_type = -1;
   opt->fn_regions_bed = NULL;
@@ -130,6 +131,8 @@ int dwgsim_opt_usage(dwgsim_opt_t *opt)
   fprintf(stderr, "         -x FILE       the bed of regions to cover [%s]\n", (NULL == opt->fn_regions_bed) ? "not using" : opt->fn_regions_bed);
   fprintf(stderr, "         -P STRING     a read prefix to prepend to each read name [%s]\n", (NULL == opt->read_prefix) ? "not using" : opt->read_prefix);
   fprintf(stderr, "         -q STRING     a fixed base quality to apply (single character) [%s]\n", (NULL == opt->fixed_quality) ? "not using" : opt->fixed_quality);
+  fprintf(stderr, "         -Q FLOAT      standard deviation of the base quality scores [%.2lf]\n", (NULL == opt->fixed_quality) ? opt->quality_std : 0.0);
+  fprintf(stderr, "         -s INT        standard deviation of the distance for pairs [%.3f]\n", opt->std_dev);
   fprintf(stderr, "         -h            print this message\n");
   fprintf(stderr, "\n");
   fprintf(stderr, "Note: For SOLiD mate pair reads and BFAST, the first read is F3 and the second is R3. For SOLiD mate pair reads\n");
@@ -186,7 +189,7 @@ dwgsim_opt_parse(dwgsim_opt_t *opt, int argc, char *argv[])
   int c;
   int muts_input_type = 0;
   
-  while ((c = getopt(argc, argv, "id:s:N:C:1:2:e:E:r:F:R:X:I:c:S:n:y:BHf:z:Mm:b:v:x:P:q:h")) >= 0) {
+  while ((c = getopt(argc, argv, "id:s:N:C:1:2:e:E:r:F:R:X:I:c:S:n:y:BHf:z:Mm:b:v:x:P:q:Q:h")) >= 0) {
       switch (c) {
         case 'i': opt->is_inner = 1; break;
         case 'd': opt->dist = dwgsim_atoi(optarg, 'd'); break;
@@ -221,6 +224,7 @@ dwgsim_opt_parse(dwgsim_opt_t *opt, int argc, char *argv[])
         case 'x': free(opt->fn_regions_bed); opt->fn_regions_bed = strdup(optarg); break;
         case 'P': free(opt->read_prefix); opt->read_prefix = strdup(optarg); break;
         case 'q': opt->fixed_quality = strdup(optarg); break;
+        case 'Q': opt->quality_std = atof(optarg); break;
         default: fprintf(stderr, "Unrecognized option: -%c\n", c); return 0;
       }
   }
@@ -283,6 +287,7 @@ dwgsim_opt_parse(dwgsim_opt_t *opt, int argc, char *argv[])
       fprintf(stderr, "Error: command line option -q requires one character\n");
       return 0;
   }
+  __check_option(opt->quality_std, 0, INT32_MAX, "-Q");
 
   if(NULL != opt->read_prefix) {
       fprintf(stderr, "Warning: remember to use the -P option with dwgsim_eval\n");

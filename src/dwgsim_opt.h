@@ -31,6 +31,7 @@ typedef struct {
     int32_t seed;
     int32_t muts_only;
     char *fixed_quality;
+    double quality_std;
     char *fn_muts_input;
     int32_t fn_muts_input_type;
     char *fn_regions_bed;
