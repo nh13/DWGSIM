@@ -1,7 +1,7 @@
 PACKAGE_VERSION="0.1.11"
 CC=			gcc
 CFLAGS=		-g -Wall -O3 #-m64 #-arch ppc
-DFLAGS=		-D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE -DPACKAGE_VERSION=\\\"${PACKAGE_VERSION}\\\"
+DFLAGS=		-D_FILE_OFFSET_BITS=64 -D_LARGEFILE64_SOURCE -D_USE_KNETFILE -DPACKAGE_VERSION=\\\"${PACKAGE_VERSION}\\\"
 DWGSIM_AOBJS = src/dwgsim_opt.o src/mut.o src/contigs.o src/regions_bed.o \
 			   src/mut_txt.o src/mut_bed.o src/mut_vcf.o src/mut_input.o src/dwgsim.o
 DWGSIM_EVAL_AOBJS = src/dwgsim_eval.o \
