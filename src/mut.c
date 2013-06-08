@@ -764,7 +764,7 @@ void mut_print_header_contig(FILE *fpout_vcf, const char *name, int32_t length)
 {
   // TODO: does mutating the reference change the sequence length?  If so, this
   // is not correct.
-  fprintf(fpout_vcf, "##contig=<ID=%s,length=%d>", name, length);
+  fprintf(fpout_vcf, "##contig=<ID=%s,length=%d>\n", name, length);
 }
 
 // TODO: add AD, DP, GQ, GT, PL
