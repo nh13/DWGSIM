@@ -756,7 +756,7 @@ void mut_print_header_post(FILE *fpout_vcf)
 {
   fprintf(fpout_vcf, "##INFO=<ID=AF,Number=A,Type=Float,Description=\"Allele Frequency\">\n");
   fprintf(fpout_vcf, "##INFO=<ID=pl,Number=1,Type=Integer,Description=\"Phasing: 1 - HET contig 1, #2 - HET contig #2, 3 - HOM both contigs\">\n"); 
-  fprintf(fpout_vcf, "##INFO=<ID=AF,Number=1,Type=String,Description=\"SUBSTITUTE/INSERT/DELETE\">\n");
+  fprintf(fpout_vcf, "##INFO=<ID=mt,Number=1,Type=String,Description=\"SUBSTITUTE/INSERT/DELETE\">\n");
   fprintf(fpout_vcf, "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n");
 }
 
