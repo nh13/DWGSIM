@@ -2,14 +2,12 @@ Welcome to DWGSIM
 
 === Prerequisites ===
 
-==== SAMtools ====
-SAMtools version >=0.1.7 is required.  Please find SAMtools
-at http://samtools.sourceforge.net
-
-Download the source code and place it in the root 
-directory.  After, execute the following commands:
- tar -zxvf samtools-0.1.7.tar.gz
- ln -s samtools-0.1.7 samtools
+If you have just cloned this repository using GIT, you must 
+initialize the SAMtools sub-module:
+ git submodule init
+ git submodule update
+You should now have the SAMtools-compatible version checked
+out in the samtools sub-directory.
 
 === Building DWGSIM ===
 
@@ -25,6 +23,7 @@ to their appropriate installation directories:
 === DWGSIM with Galaxy ===
 
 DWGSIM can be incorporated into galaxy.
+NB: this is out-of-date.
 
 1. Copy over the wrapper scripts:
   cp scripts/galaxy/dwgsim_wrapper.* galaxy-dist/tools/sr_mapping
