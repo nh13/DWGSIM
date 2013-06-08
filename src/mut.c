@@ -747,15 +747,30 @@ void mut_diref(dwgsim_opt_t *opt, const seq_t *seq, mutseq_t *hap1, mutseq_t *ha
   mut_debug(seq, hap1, hap2);
 }
 
-void mut_print(const char *name, const seq_t *seq, mutseq_t *hap1, mutseq_t *hap2, FILE *fpout_txt, FILE *fpout_vcf, int32_t header)
+void mut_print_header_pre(FILE *fpout_vcf)
+{
+  fprintf(fpout_vcf, "##fileformat=VCFv4.1\n");
+}
+
+void mut_print_header_post(FILE *fpout_vcf)
+{
+  fprintf(fpout_vcf, "##INFO=<ID=AF,Number=A,Type=Float,Description=\"Allele Frequency\">\n");
+  fprintf(fpout_vcf, "##INFO=<ID=pl,Number=1,Type=Integer,Description=\"Phasing: 1 - HET contig 1, #2 - HET contig #2, 3 - HOM both contigs\">\n"); 
+  fprintf(fpout_vcf, "##INFO=<ID=AF,Number=1,Type=String,Description=\"SUBSTITUTE/INSERT/DELETE\">\n");
+  fprintf(fpout_vcf, "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n");
+}
+
+void mut_print_header_contig(FILE *fpout_vcf, const char *name, int32_t length)
+{
+  // TODO: does mutating the reference change the sequence length?  If so, this
+  // is not correct.
+  fprintf(fpout_vcf, "##contig=<ID=%s,length=%d>", name, length);
+}
+
+// TODO: add AD, DP, GQ, GT, PL
+void mut_print(const char *name, const seq_t *seq, mutseq_t *hap1, mutseq_t *hap2, FILE *fpout_txt, FILE *fpout_vcf)
 {
   int32_t i, j, hap;
-  
-  // header
-  if(1 == header) {
-      fprintf(fpout_vcf, "##fileformat=VCFv4.1\n");
-      fprintf(fpout_vcf, "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n");
-  }
   
   // body
   mut_t mut_prev[2] = {NOCHANGE,NOCHANGE}; // for deletions

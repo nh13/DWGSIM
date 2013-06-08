@@ -70,6 +70,10 @@ mut_get_ins(mutseq_t *seq, int32_t i, mut_t *n, mut_t *ins);
 void 
 mut_diref(dwgsim_opt_t *opt, const seq_t *seq, mutseq_t *hap1, mutseq_t *hap2, int32_t contig_i, muts_input_t *muts_input);
 
+void mut_print_header_pre(FILE *fpout_vcf);
+void mut_print_header_post(FILE *fpout_vcf);
+void mut_print_header_contig(FILE *fpout_vcf, const char *name, int32_t length);
+
 // Columns:
 // 1 - chromosome name
 // 2 - position (one-based)
@@ -77,7 +81,7 @@ mut_diref(dwgsim_opt_t *opt, const seq_t *seq, mutseq_t *hap1, mutseq_t *hap2, i
 // 4 - variant allele (IUPAC code or insertion base(s))
 // 5 - '-' for homozygous, '+' for heterozygous
 void 
-mut_print(const char *name, const seq_t *seq, mutseq_t *hap1, mutseq_t *hap2, FILE *fpout_txt, FILE *fpout_vcf, int32_t header);
+mut_print(const char *name, const seq_t *seq, mutseq_t *hap1, mutseq_t *hap2, FILE *fpout_txt, FILE *fpout_vcf);
 
 // 0 - 0
 // 1 - 1
