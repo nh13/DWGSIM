@@ -840,12 +840,16 @@ void dwgsim_core(dwgsim_opt_t * opt)
                       }
                       else {
                           for (i = 0; i < s[j]; ++i) {
-                              qstr[i] = (int)(-10.0 * log(e[j]->start + e[j]->by*i) / log(10.0) + 0.499) + 33;
+                              if (e[j]->start>0 || e[j]->by>0) {
+                                  qstr[i] = (int)(-10.0 * log(e[j]->start + e[j]->by*i) / log(10.0) + 0.499) + 33;
+                              } else {
+                                  qstr[i] = 73;
+                              }
                               if(0 < opt->quality_std) {
                                   qstr[i] += (int)((ran_normal() * opt->quality_std) + 0.5);
-                                  if(qstr[i] < 33) qstr[i] = 33;
-                                  if(73 < qstr[i]) qstr[i] = 73;
                               }
+                              if(qstr[i] < 33) qstr[i] = 33;
+                              if(73 < qstr[i]) qstr[i] = 73;
                           }
                       }
                       qstr[i] = 0;
@@ -930,12 +934,16 @@ void dwgsim_core(dwgsim_opt_t * opt)
                       }
                       else {
                           for (i = 0; i < s[j]; ++i) {
-                              qstr[i] = (int)(-10.0 * log(e[j]->start + e[j]->by*i) / log(10.0) + 0.499) + 33;
+                              if (e[j]->start>0 || e[j]->by>0) {
+                                  qstr[i] = (int)(-10.0 * log(e[j]->start + e[j]->by*i) / log(10.0) + 0.499) + 33;
+                              } else {
+                                  qstr[i] = 73;
+                              }
                               if(0 < opt->quality_std) {
                                   qstr[i] += (int)((ran_normal() * opt->quality_std) + 0.5);
-                                  if(qstr[i] < 33) qstr[i] = 33;
-                                  if(73 < qstr[i]) qstr[i] = 73;
                               }
+                              if(qstr[i] < 33) qstr[i] = 33;
+                              if(73 < qstr[i]) qstr[i] = 73;
                           }
                       }
                       qstr[i] = 0;
