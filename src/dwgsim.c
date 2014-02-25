@@ -114,10 +114,11 @@ uint8_t nst_nt4_table[256] = {
                 uint8_t *insertion = NULL; \
                 insertion = mut_get_ins_long_n(currseq->ins[ins], &num_ins); \
                 if(0 == strand[x]) { \
-                    byte_index = mut_packed_len(num_ins)-1; bit_index = num_ins & 3; \
+                    byte_index = mut_packed_len(num_ins) - 1; bit_index = 3 - (num_ins & 3); \
                     while(num_ins > 0 && k < s[x]) { \
+                        assert(0 <= byte_index); \
                         tmp_seq[x][k++] = (insertion[byte_index] >> (bit_index << 1)) & 0x3;                \
-                        --num_ins, ins >>= 2; \
+                        --num_ins; \
                         bit_index--; \
                         if (bit_index < 0) { \
                             bit_index = 3; \
@@ -515,7 +516,7 @@ void dwgsim_core(dwgsim_opt_t * opt)
   }
   contig_i = 0;
   while ((l = seq_read_fasta(opt->fp_fa, &seq, name, 0)) >= 0) {
-      int64_t n_pairs;
+      int64_t n_pairs = 0;
       n_ref--;
       
       if(1 == opt->muts_only) {
