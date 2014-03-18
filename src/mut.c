@@ -197,7 +197,7 @@ mut_get_ins_bytes(int32_t n)
   return num_bytes;
 }
 
-inline uint8_t*
+uint8_t*
 mut_get_ins_long_n(uint8_t *ins, uint32_t *n)
 {
   switch(ins[0]) {
