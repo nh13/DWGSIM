@@ -55,18 +55,18 @@ def main(options):
     fmts_i = 0
     for fn in options.fns:
         table = Table(fn, options.min_mapq)
-        # extract specificity
-        y = [table.matrix[i][17] for i in range(len(table.matrix))]
         # extract sensitivity 
-        x = [table.matrix[i][16] for i in range(len(table.matrix))]
+        x = [table.matrix[i][17] for i in range(len(table.matrix))]
+        # extract specificity
+        y = [table.matrix[i][16] for i in range(len(table.matrix))]
         pylab.plot(x, y, fmts[fmts_i])
         fmts_i = fmts_i + 1
         if len(fmts) <= fmts_i:
             fmts_i = 0
     # plot values
     pylab.title('DWGSIM ROC')
-    pylab.xlabel('sensitivity')
-    pylab.ylabel('specificity')
+    pylab.xlabel('specificity')
+    pylab.ylabel('sensitivity')
     # xlim
     if None != options.xlim:
         nums = re.findall(r'\d+\.?\d*', options.xlim)
