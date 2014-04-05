@@ -288,7 +288,6 @@ process_bam(dwgsim_eval_counts_t *counts,
   int32_t pos_1, pos_2, str_1, str_2, rand_1, rand2; 
   int32_t n_err_1, n_sub_1, n_indel_1, n_err_2, n_sub_2, n_indel_2;
   int32_t pos, str, rand;
-  int32_t n_err, n_sub, n_indel;
   int32_t i, j, tmp;
   int32_t predicted_value, actual_value;
   int32_t clip;
@@ -416,11 +415,9 @@ process_bam(dwgsim_eval_counts_t *counts,
   // copy data
   if(1 == args->z || (b->core.flag & BAM_FREAD1)) {
       pos = pos_1; str = str_1; rand = rand_1;
-      n_err = n_err_1; n_sub = n_sub_1; n_indel = n_indel_1;
   }
   else {
       pos = pos_2; str = str_2; rand = rand2;
-      n_err = n_err_2; n_sub = n_sub_2; n_indel = n_indel_2;
   }
 
   // get the actual value 
@@ -440,8 +437,9 @@ process_bam(dwgsim_eval_counts_t *counts,
       chr = header->target_name[b->core.tid];
       left = b->core.pos - clip;
 
-      if(1 == rand || // should not map 
-         0 != strcmp(chr, chr_name)  // different chromosome
+      if(1 == rand // should not map 
+         || str != bam1_strand(b) // different strand
+         || 0 != strcmp(chr, chr_name)  // different chromosome
          || args->g < fabs(pos - left)) { // out of bounds (positionally) 
           predicted_value = DWGSIM_EVAL_MAPPED_INCORRECTLY;
       }
