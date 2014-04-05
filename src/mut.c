@@ -441,7 +441,7 @@ mut_left_justify_ins(mutseq_t *hap1, int32_t i)
       }
       hap1->s[j] = (n << ins_length_shift) | (ins << muttype_shift) | INSERT | (hap1->s[j]&3); // re-insert
   } else { // long
-      int32_t byte_index;
+      int32_t bit_index, byte_index;
       uint32_t num_ins;
       uint8_t *insertion = NULL;
       insertion = mut_get_ins_long_n(hap1->ins[ins], &num_ins);
@@ -451,15 +451,20 @@ mut_left_justify_ins(mutseq_t *hap1, int32_t i)
             && INSERT != (hap1->s[j-1]&mutmsk) // no insertion
             && SUBSTITUTE != (hap1->s[j-1]&mutmsk) // no substitution
             && DELETE != (hap1->s[j-1]&mutmsk) // no deletion 
-            && ((insertion[0] >> 6) & 3) == (hap1->s[j-1]&3)) { // end of insertion matches previous base
-          // update ins
+            // NB: last base of the insertion has a bit index of zero and byte index of zero
+            && ((insertion[0] >> (0 << 1)) & 3) == (hap1->s[j-1]&3)) { // end of insertion matches previous base
+          // start with the last base
           for (byte_index = 0; byte_index < mut_packed_len(num_ins); byte_index++) {
-              insertion[byte_index] <<= 2; // shift over
-              if (byte_index+1 < mut_packed_len(num_ins)) { // copy over from next byte 
-                  insertion[byte_index] |= (insertion[byte_index+1] >> 6) & 3; 
+              insertion[byte_index] >>= 2; // shift down, get rid of first base (last two bits)
+              if (byte_index + 1 < mut_packed_len(num_ins)) {
+                  uint8_t b = (insertion[byte_index+1] >> (0 << 1)) & 3; // last base of the next byte (first two bits)
+                  insertion[byte_index] |= b << 6; // move the new base to the last two bits
               }
           }
-          insertion[mut_packed_len(num_ins)-1] |= (hap1->s[j]&3) << ((num_ins & 3) << 1); // insert first base
+          // add a base to the front
+          bit_index = (num_ins+3) & 3; // % 4
+          byte_index = mut_packed_len(num_ins)-1;
+          insertion[byte_index] |= (hap1->s[j-1]&3) << (bit_index << 1);
           hap1->s[j] = (hap1->s[j]&3); // make it NOCHANGE
           j--;
       }
