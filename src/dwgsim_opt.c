@@ -293,8 +293,8 @@ dwgsim_opt_parse(dwgsim_opt_t *opt, int argc, char *argv[])
       fprintf(stderr, "Warning: remember to use the -P option with dwgsim_eval\n");
   }
 
-  if(0 == opt->is_inner && 0 < opt->length[1]){ //paired end / mate pair
-    int s = opt->length[0]>opt->length[1] ? opt->length[0] : opt->length[1];
+  if(0 < opt->length[1]){ //paired end / mate pair
+    int s = opt->length[0] + opt->length[1] + opt->is_inner;
     double r = (s-opt->dist)*1.0/opt->std_dev;
     if(r>6){
       fprintf(stderr, "Error: command line option -d is too small for the read length (%d)\n",opt->dist);
