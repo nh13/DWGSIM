@@ -50,6 +50,8 @@
 #include "dwgsim.h"
 //#include <config.h>
 
+const int qual_max = 40;
+
 uint8_t nst_nt4_table[256] = {
     4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4, 
     4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4, 
@@ -844,13 +846,13 @@ void dwgsim_core(dwgsim_opt_t * opt)
                               if (e[j]->start+e[j]->by*i>0) {
                                   qstr[i] = (int)(-10.0 * log(e[j]->start + e[j]->by*i) / log(10.0) + 0.499) + 33;
                               } else {
-                                  qstr[i] = 73;
+                                  qstr[i] = qual_max + 33;
                               }
                               if(0 < opt->quality_std) {
                                   qstr[i] += (int)((ran_normal() * opt->quality_std) + 0.5);
                               }
                               if(qstr[i] < 33) qstr[i] = 33;
-                              if(73 < qstr[i]) qstr[i] = 73;
+                              if(qual_max + 33 < qstr[i]) qstr[i] = qual_max + 33;
                           }
                       }
                       qstr[i] = 0;
@@ -938,13 +940,13 @@ void dwgsim_core(dwgsim_opt_t * opt)
                               if (e[j]->start+e[j]->by*i>0) {
                                   qstr[i] = (int)(-10.0 * log(e[j]->start + e[j]->by*i) / log(10.0) + 0.499) + 33;
                               } else {
-                                  qstr[i] = 73;
+                                  qstr[i] = qual_max + 33;
                               }
                               if(0 < opt->quality_std) {
                                   qstr[i] += (int)((ran_normal() * opt->quality_std) + 0.5);
                               }
                               if(qstr[i] < 33) qstr[i] = 33;
-                              if(73 < qstr[i]) qstr[i] = 73;
+                              if(qual_max + 33 < qstr[i]) qstr[i] = 33;
                           }
                       }
                       qstr[i] = 0;
