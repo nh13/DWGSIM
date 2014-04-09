@@ -50,6 +50,8 @@
 #include "dwgsim.h"
 //#include <config.h>
 
+#define qual_max 40
+
 uint8_t nst_nt4_table[256] = {
     4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4, 
     4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4, 
@@ -841,12 +843,16 @@ void dwgsim_core(dwgsim_opt_t * opt)
                       }
                       else {
                           for (i = 0; i < s[j]; ++i) {
-                              qstr[i] = (int)(-10.0 * log(e[j]->start + e[j]->by*i) / log(10.0) + 0.499) + 33;
+                              if (e[j]->start+e[j]->by*i>0) {
+                                  qstr[i] = (int)(-10.0 * log(e[j]->start + e[j]->by*i) / log(10.0) + 0.499) + '!';
+                              } else {
+                                  qstr[i] = qual_max + '!';
+                              }
                               if(0 < opt->quality_std) {
                                   qstr[i] += (int)((ran_normal() * opt->quality_std) + 0.5);
-                                  if(qstr[i] < 33) qstr[i] = 33;
-                                  if(73 < qstr[i]) qstr[i] = 73;
                               }
+                              if(qstr[i] < '!') qstr[i] = '!';
+                              if(qual_max + '!' < qstr[i]) qstr[i] = qual_max + '!';
                           }
                       }
                       qstr[i] = 0;
@@ -931,12 +937,16 @@ void dwgsim_core(dwgsim_opt_t * opt)
                       }
                       else {
                           for (i = 0; i < s[j]; ++i) {
-                              qstr[i] = (int)(-10.0 * log(e[j]->start + e[j]->by*i) / log(10.0) + 0.499) + 33;
+                              if (e[j]->start+e[j]->by*i>0) {
+                                  qstr[i] = (int)(-10.0 * log(e[j]->start + e[j]->by*i) / log(10.0) + 0.499) + '!';
+                              } else {
+                                  qstr[i] = qual_max + '!';
+                              }
                               if(0 < opt->quality_std) {
                                   qstr[i] += (int)((ran_normal() * opt->quality_std) + 0.5);
-                                  if(qstr[i] < 33) qstr[i] = 33;
-                                  if(73 < qstr[i]) qstr[i] = 73;
                               }
+                              if(qstr[i] < '!') qstr[i] = '!';
+                              if(qual_max + '!' < qstr[i]) qstr[i] = '!';
                           }
                       }
                       qstr[i] = 0;
