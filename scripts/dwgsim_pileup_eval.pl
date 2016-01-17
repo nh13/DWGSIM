@@ -1,9 +1,9 @@
-#!/usr/bin/perl -w
+#!/usr/bin/env perl -w
 
 # Copied from SAMtools (http://samtools.sourceforge.net)
 
-# This perl code is very cryptic.  Evaluates the fraction 
-# of reads correctly aligned at various mapping quality 
+# This perl code is very cryptic.  Evaluates the fraction
+# of reads correctly aligned at various mapping quality
 # thresholds.
 
 use strict;
@@ -79,7 +79,7 @@ sub dwgsim_eval {
 	print STDERR "\r$ctr\n";
 
 	printf(STDERR "%d\t%d\t%d\t%d\t%d\t%d\t%d\n",
-		$m, $found_correct_1, $found_correct_2, 
+		$m, $found_correct_1, $found_correct_2,
 		$is_correct_1, $is_correct_2,
 		$found_pair_correct,
 		$is_pair_correct);
@@ -167,12 +167,12 @@ sub process_reads {
 				if(1 == $end) { # first read
 					if(abs($pos_1 - $left) <= $gap) {
 						$found_correct_1=1;
-						$correct_index_1 = $i; 
+						$correct_index_1 = $i;
 					}
 				} else { # second read
 					if(abs($pos_2 - $left) <= $gap) {
 						$found_correct_2=1;
-						$correct_index_1 = $i; 
+						$correct_index_1 = $i;
 					}
 				}
 			}
