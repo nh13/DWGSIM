@@ -840,7 +840,7 @@ void mut_print(const char *name, const seq_t *seq, mutseq_t *hap1, mutseq_t *hap
                       }
                       if (0 < i) fprintf(fpout_vcf, "\t%c", "ACGTN"[nst_nt4_table[(int)seq->s[i-1]]]);
                       else fprintf(fpout_vcf, "\t.");
-                      fprintf(fpout_vcf, "\t100\tPASS\tAF=1.0;pl=1;mt=DELETE\n"); 
+                      fprintf(fpout_vcf, "\t100\tPASS\tAF=0.5;pl=1;mt=DELETE\n"); 
                   }
                   // NB: convert back 'c'
                   c[0] = nst_nt4_table[(int)seq->s[i]];
@@ -860,7 +860,7 @@ void mut_print(const char *name, const seq_t *seq, mutseq_t *hap1, mutseq_t *hap
                       }
                       if (0 < i) fprintf(fpout_vcf, "\t%c", "ACGTN"[nst_nt4_table[(int)seq->s[i-1]]]);
                       else fprintf(fpout_vcf, "\t.");
-                      fprintf(fpout_vcf, "\t100\tPASS\tAF=1.0;pl=2;mt=DELETE\n"); 
+                      fprintf(fpout_vcf, "\t100\tPASS\tAF=0.5;pl=2;mt=DELETE\n"); 
                   }
                   // NB: convert back 'c'
                   c[0] = nst_nt4_table[(int)seq->s[i]];
