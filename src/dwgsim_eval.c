@@ -614,28 +614,30 @@ dwgsim_eval_counts_print(dwgsim_eval_counts_t *counts, int32_t a, int32_t d, int
 
   // header
   fprintf(stdout, "# thr | the minimum %s threshold\n", (0 == a) ? "mapping quality" : "alignment score");
-  fprintf(stdout, "# mc | the number of reads mapped correctly that should be mapped at the threshold\n");
-  fprintf(stdout, "# mi | the number of reads mapped incorrectly that should be mapped be mapped at the threshold\n");
+
+  fprintf(stdout, "# mc | the number of correctly mapped reads that should be mapped at the threshold\n");
+  fprintf(stdout, "# mi | the number of incorrectly mapped reads that should be mapped at the threshold\n");
+  fprintf(stdout, "# mu | the number of unmapped reads that should be mapped at the threshold\n");
           
-  fprintf(stdout, "# mu | the number of reads unmapped that should be mapped be mapped at the threshold\n");
+  fprintf(stdout, "# um | the number of mapped reads that should be unmapped at the threshold\n");
+  fprintf(stdout, "# uu | the number of unmapped reads that should be unmapped at the threshold\n");
+
+  fprintf(stdout, "# mc + mi + mu + um + uu | the total number of reads at the threshold\n");
+
+  fprintf(stdout, "# mc' | the number of correctly mapped reads that should be mapped at or greater than that threshold\n");
+  fprintf(stdout, "# mi' | the number of incorrectly mapped reads that should be mapped at or greater than that threshold\n");
+  fprintf(stdout, "# mu' | the number of unmapped reads that should be mapped at or greater than that threshold\n");
           
-  fprintf(stdout, "# um | the number of reads mapped that should be unmapped be mapped at the threshold\n");
-  fprintf(stdout, "# uu | the number of reads unmapped that should be unmapped be mapped at the threshold\n");
-  fprintf(stdout, "# mc' + mi' + mu' + um' + uu' | the total number of reads mapped at the threshold\n");
-  fprintf(stdout, "# mc' | the number of reads mapped correctly that should be mapped at or greater than that threshold\n");
-  fprintf(stdout, "# mi' | the number of reads mapped incorrectly that should be mapped be mapped at or greater than that threshold\n");
+  fprintf(stdout, "# um' | the number of mapped reads that should be unmapped at or greater than that threshold\n");
+  fprintf(stdout, "# uu' | the number of unmapped reads that should be unmapped at or greater than that threshold\n");
+
+  fprintf(stdout, "# mc' + mi' + mu' + um' + uu' | the total number of reads at or greater than the threshold\n");
           
-  fprintf(stdout, "# mu' | the number of reads unmapped that should be mapped be mapped at or greater than that threshold\n");
-          
-  fprintf(stdout, "# um' | the number of reads mapped that should be unmapped be mapped at or greater than that threshold\n");
-  fprintf(stdout, "# uu' | the number of reads unmapped that should be unmapped be mapped at or greater than that threshold\n");
-  fprintf(stdout, "# mc' + mi' + mu' + um' + uu' | the total number of reads mapped at or greater than the threshold\n");
-          
-  fprintf(stdout, "# (mc / (mc' + mi' + mu')) | sensitivity: the fraction of reads that should be mapped that are mapped correctly at the threshold\n");
-  fprintf(stdout, "# (mc / mc' + mi') | positive predictive value: the fraction of mapped reads that are mapped correctly at the threshold\n");
+  fprintf(stdout, "# (mc / (mc' + mi' + mu')) | sensitivity: the fraction of mappable reads that are mapped correctly at the threshold\n");
+  fprintf(stdout, "# (mc / (mc' + mi')) | positive predictive value: the fraction of mapped mappable reads that are mapped correctly at the threshold\n");
   fprintf(stdout, "# (um / (um' + uu')) | false discovery rate: the fraction of random reads that are mapped at the threshold\n");
-  fprintf(stdout, "# (mc' / (mc' + mi' + mu')) | sensitivity: the fraction of reads that should be mapped that are mapped correctly at or greater than the threshold\n");
-  fprintf(stdout, "# (mc' / mc' + mi') | positive predictive value: the fraction of mapped reads that are mapped correctly at or greater than the threshold\n");
+  fprintf(stdout, "# (mc' / (mc' + mi' + mu')) | sensitivity: the fraction of mappable reads that are mapped correctly at or greater than the threshold\n");
+  fprintf(stdout, "# (mc' / (mc' + mi')) | positive predictive value: the fraction of mapped mappable reads that are mapped correctly at or greater than the threshold\n");
   fprintf(stdout, "# (um' / (um' + uu')) | false discovery rate: the fraction of random reads that are mapped at or greater than the threshold\n");
 
 
