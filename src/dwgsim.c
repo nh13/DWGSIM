@@ -97,18 +97,18 @@ uint8_t nst_nt4_table[256] = {
             n_indel_first[x]++;							\
             if(1 == mut_get_ins(currseq, i, &n, &ins)) { \
                 if(0 == strand[x]) { \
+                    if(k < s[x]) tmp_seq[x][k++] = c & 0xf;						\
                     while(n > 0 && k < s[x]) { \
                         tmp_seq[x][k++] = ins & 0x3;                \
                         --n, ins >>= 2; \
                     } \
-                    if(k < s[x]) tmp_seq[x][k++] = c & 0xf;						\
                 } else { \
-                    tmp_seq[x][k++] = c & 0xf;						\
                     while(n > 0 && k < s[x]) { \
                         ext_coor[x]++; \
                         tmp_seq[x][k++] = (ins >> ((n-1) << 1) & 0x3);                \
                         --n; \
                     } \
+                    if (k < s[x]) tmp_seq[x][k++] = c & 0xf;						\
                 } \
             } else { \
                 int32_t byte_index, bit_index; \
@@ -117,6 +117,7 @@ uint8_t nst_nt4_table[256] = {
                 insertion = mut_get_ins_long_n(currseq->ins[ins], &num_ins); \
                 if(0 == strand[x]) { \
                     byte_index = mut_packed_len(num_ins) - 1; bit_index = 3 - (num_ins & 3); \
+                    if(k < s[x]) tmp_seq[x][k++] = c & 0xf;						\
                     while(num_ins > 0 && k < s[x]) { \
                         assert(0 <= byte_index); \
                         tmp_seq[x][k++] = (insertion[byte_index] >> (bit_index << 1)) & 0x3;                \
@@ -127,9 +128,7 @@ uint8_t nst_nt4_table[256] = {
                             byte_index--; \
                         } \
                     } \
-                    if(k < s[x]) tmp_seq[x][k++] = c & 0xf;						\
                 } else { \
-                    tmp_seq[x][k++] = c & 0xf;						\
                     byte_index = 0; bit_index = 0; \
                     while(num_ins > 0 && k < s[x]) { \
                         ext_coor[x]++; \
@@ -141,6 +140,7 @@ uint8_t nst_nt4_table[256] = {
                             byte_index++; \
                         } \
                     } \
+                    if (k < s[x]) tmp_seq[x][k++] = c & 0xf;						\
                 } \
             }													\
         } \
