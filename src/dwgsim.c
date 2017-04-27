@@ -421,7 +421,7 @@ void dwgsim_core(dwgsim_opt_t * opt)
 {
   seq_t seq;
   mutseq_t *mutseq[2]={NULL,NULL};
-  uint64_t tot_len, ii=0, ctr=0;
+  uint64_t tot_len, ii=0, ctr=0, rand_ii=0;
   int i, l, m, n_ref, contig_i;
   char name[1024], *qstr;
   int32_t name_len_max=0;
@@ -488,7 +488,7 @@ void dwgsim_core(dwgsim_opt_t * opt)
           }
       }
   }
-  fprintf(stderr, "[dwgsim_core] %d sequences, total length: %llu\n", n_ref, (long long)tot_len);
+  fprintf(stderr, "[dwgsim_core] %d sequences, total length: %llu\n", n_ref, (unsigned long long)tot_len);
   rewind(opt->fp_fa);
   mut_print_header_post(opt->fp_vcf);
 
@@ -865,7 +865,7 @@ void dwgsim_core(dwgsim_opt_t * opt)
                                   name, ext_coor[0]+1, ext_coor[1]+1, strand[0], strand[1], 0, 0,
                                   n_err[0], n_sub[0], n_indel[0],
                                   n_err[1], n_sub[1],n_indel[1],
-                                  (long long)ii, j+1);
+                                  (unsignedf long long)ii, j+1);
                           for (i = 0; i < s[j]; ++i)
                             fputc("ACGTN"[(int)tmp_seq[j][i]], fpo);
                           fprintf(fpo, "\n+\n%s\n", qstr);
@@ -883,7 +883,7 @@ void dwgsim_core(dwgsim_opt_t * opt)
                                   name, ext_coor[0]+1, ext_coor[1]+1, strand[0], strand[1], 0, 0,
                                   n_err[0] - n_err_first[0], n_sub[0] - n_sub_first[0], n_indel[0] - n_indel_first[0], 
                                   n_err[1] - n_err_first[1], n_sub[1] - n_sub_first[1], n_indel[1] - n_indel_first[1],
-                                  (long long)ii, 2 - j);
+                                  (unsigned long long)ii, 2 - j);
                           //fputc('A', fpo);
                           for (i = 1; i < s[j]; ++i)
                             fputc("ACGTN"[(int)tmp_seq[j][i]], fpo);
@@ -899,7 +899,7 @@ void dwgsim_core(dwgsim_opt_t * opt)
                               (NULL == opt->read_prefix) ? "" : "_",
                               name, ext_coor[0]+1, ext_coor[1]+1, strand[0], strand[1], 0, 0,
                               n_err[0], n_sub[0], n_indel[0], n_err[1], n_sub[1], n_indel[1],
-                              (long long)ii);
+                              (unsignedf long long)ii);
                       if(ILLUMINA == opt->data_type || IONTORRENT == opt->data_type) {
                           for (i = 0; i < s[j]; ++i)
                             fputc("ACGTN"[(int)tmp_seq[j][i]], opt->fp_bfast);
@@ -915,7 +915,6 @@ void dwgsim_core(dwgsim_opt_t * opt)
                           fprintf(opt->fp_bfast, "\n");
                       }
                   }
-                  n_sim++;
               }
               else { // random DNA read
                   for(j=0;j<2;j++) {
@@ -969,7 +968,7 @@ void dwgsim_core(dwgsim_opt_t * opt)
                                   (NULL == opt->read_prefix) ? "" : "_",
                                   "rand", 0, 0, 0, 0, 1, 1,
                                   0, 0, 0, 0, 0, 0,
-                                  (long long)ii,
+                                  (unsigned long long)rand_ii,
                                   j+1);
                           for (i = 0; i < s[j]; ++i)
                             fputc("ACGTN"[(int)tmp_seq[j][i]], fpo);
@@ -987,7 +986,8 @@ void dwgsim_core(dwgsim_opt_t * opt)
                                   (NULL == opt->read_prefix) ? "" : "_",
                                   "rand", 0, 0, 0, 0, 1, 1,
                                   0, 0, 0, 0, 0, 0,
-                                  (long long)ii, 2 - j);
+                                  (unsigned long long)rand_ii,
+                                  2 - j);
                           //fputc('A', fpo);
                           for (i = 1; i < s[j]; ++i)
                             fputc("ACGTN"[(int)tmp_seq[j][i]], fpo);
@@ -1003,7 +1003,7 @@ void dwgsim_core(dwgsim_opt_t * opt)
                               (NULL == opt->read_prefix) ? "" : "_",
                               "rand", 0, 0, 0, 0, 1, 1,
                               0, 0, 0, 0, 0, 0,
-                              (long long)ii);
+                              (unsigned long long)rand_ii);
                       if(ILLUMINA == opt->data_type || IONTORRENT == opt->data_type) {
                           for (i = 0; i < s[j]; ++i)
                             fputc("ACGTN"[(int)tmp_seq[j][i]], opt->fp_bfast);
@@ -1019,8 +1019,9 @@ void dwgsim_core(dwgsim_opt_t * opt)
                           fprintf(opt->fp_bfast, "\n");
                       }
                   }
-                  n_sim++;
+                  rand_ii++;
               }
+              n_sim++;
           }
           fprintf(stderr, "\r[dwgsim_core] %llu",
                   (unsigned long long int)ctr);
