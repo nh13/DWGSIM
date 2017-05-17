@@ -216,7 +216,7 @@ dwgsim_opt_parse(dwgsim_opt_t *opt, int argc, char *argv[])
         case 'B': opt->use_base_error = 1; break;
         case 'H': opt->is_hap = 1; break;
         case 'h': return 0;
-        case 'z': opt->seed = dwgsim_atoi(optarg, 'n'); break;
+        case 'z': opt->seed = dwgsim_atoi(optarg, 'z'); break;
         case 'M': opt->muts_only = 1; break;
         case 'm': free(opt->fn_muts_input); opt->fn_muts_input = strdup(optarg); opt->fn_muts_input_type = MUT_INPUT_TXT; muts_input_type |= 0x1; break;
         case 'b': free(opt->fn_muts_input); opt->fn_muts_input = strdup(optarg); opt->fn_muts_input_type = MUT_INPUT_BED; muts_input_type |= 0x2; break;
