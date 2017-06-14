@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/nh13/DWGSIM.svg?branch=master)](https://travis-ci.org/nh13/DWGSIM)
+
 Welcome to DWGSIM.
 
 Please see the file LICENSE for details.
