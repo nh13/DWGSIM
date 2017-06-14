@@ -71,3 +71,7 @@ dist:clean
 	tar -vcf dwgsim-${PACKAGE_VERSION}.tar dwgsim-${PACKAGE_VERSION}; \
 	gzip -9 dwgsim-${PACKAGE_VERSION}.tar; \
 	rm -rv dwgsim-${PACKAGE_VERSION};
+
+test:
+	if [ -d tmp ]; then rm -r tmp; fi
+	/bin/bash testdata/test.sh
