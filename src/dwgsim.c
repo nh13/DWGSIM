@@ -858,61 +858,65 @@ void dwgsim_core(dwgsim_opt_t * opt)
                       qstr[i] = 0;
                       // BWA
                       FILE *fpo = (0 == j) ? opt->fp_bwa1: opt->fp_bwa2;
-                      if(ILLUMINA == opt->data_type || IONTORRENT == opt->data_type) {
-                          fprintf(fpo, "@%s%s%s_%u_%u_%1u_%1u_%1u_%1u_%d:%d:%d_%d:%d:%d_%llx/%d\n", 
-                                  (NULL == opt->read_prefix) ? "" : opt->read_prefix,
-                                  (NULL == opt->read_prefix) ? "" : "_",
-                                  name, ext_coor[0]+1, ext_coor[1]+1, strand[0], strand[1], 0, 0,
-                                  n_err[0], n_sub[0], n_indel[0],
-                                  n_err[1], n_sub[1],n_indel[1],
-                                  (unsigned long long)ii, j+1);
-                          for (i = 0; i < s[j]; ++i)
-                            fputc("ACGTN"[(int)tmp_seq[j][i]], fpo);
-                          fprintf(fpo, "\n+\n%s\n", qstr);
-                      }
-                      else {
-                          // Note: BWA ignores the adapter and the first color, so this is a misrepresentation 
-                          // in samtools.  We must first skip the first color.  Basically, a 50 color read is a 
-                          // 49 color read for BWA.
-                          //
-                          // Note: BWA outputs F3 to read1, annotated as read "2", and outputs R3 to read2,
-                          // annotated as read "1".
-                          fprintf(fpo, "@%s%s%s_%u_%u_%1u_%1u_%1u_%1u_%d:%d:%d_%d:%d:%d_%llx/%d\n", 
-                                  (NULL == opt->read_prefix) ? "" : opt->read_prefix,
-                                  (NULL == opt->read_prefix) ? "" : "_",
-                                  name, ext_coor[0]+1, ext_coor[1]+1, strand[0], strand[1], 0, 0,
-                                  n_err[0] - n_err_first[0], n_sub[0] - n_sub_first[0], n_indel[0] - n_indel_first[0], 
-                                  n_err[1] - n_err_first[1], n_sub[1] - n_sub_first[1], n_indel[1] - n_indel_first[1],
-                                  (unsigned long long)ii, 2 - j);
-                          //fputc('A', fpo);
-                          for (i = 1; i < s[j]; ++i)
-                            fputc("ACGTN"[(int)tmp_seq[j][i]], fpo);
-                          fprintf(fpo, "\n+\n");
-                          for (i = 1; i < s[j]; ++i) 
-                            fputc(qstr[i], fpo);
-                          fprintf(fpo, "\n");
+                      if (NULL != fpo) {
+                        if(ILLUMINA == opt->data_type || IONTORRENT == opt->data_type) {
+                            fprintf(fpo, "@%s%s%s_%u_%u_%1u_%1u_%1u_%1u_%d:%d:%d_%d:%d:%d_%llx/%d\n", 
+                                    (NULL == opt->read_prefix) ? "" : opt->read_prefix,
+                                    (NULL == opt->read_prefix) ? "" : "_",
+                                    name, ext_coor[0]+1, ext_coor[1]+1, strand[0], strand[1], 0, 0,
+                                    n_err[0], n_sub[0], n_indel[0],
+                                    n_err[1], n_sub[1],n_indel[1],
+                                    (unsigned long long)ii, j+1);
+                            for (i = 0; i < s[j]; ++i)
+                              fputc("ACGTN"[(int)tmp_seq[j][i]], fpo);
+                            fprintf(fpo, "\n+\n%s\n", qstr);
+                        }
+                        else {
+                            // Note: BWA ignores the adapter and the first color, so this is a misrepresentation 
+                            // in samtools.  We must first skip the first color.  Basically, a 50 color read is a 
+                            // 49 color read for BWA.
+                            //
+                            // Note: BWA outputs F3 to read1, annotated as read "2", and outputs R3 to read2,
+                            // annotated as read "1".
+                            fprintf(fpo, "@%s%s%s_%u_%u_%1u_%1u_%1u_%1u_%d:%d:%d_%d:%d:%d_%llx/%d\n", 
+                                    (NULL == opt->read_prefix) ? "" : opt->read_prefix,
+                                    (NULL == opt->read_prefix) ? "" : "_",
+                                    name, ext_coor[0]+1, ext_coor[1]+1, strand[0], strand[1], 0, 0,
+                                    n_err[0] - n_err_first[0], n_sub[0] - n_sub_first[0], n_indel[0] - n_indel_first[0], 
+                                    n_err[1] - n_err_first[1], n_sub[1] - n_sub_first[1], n_indel[1] - n_indel_first[1],
+                                    (unsigned long long)ii, 2 - j);
+                            //fputc('A', fpo);
+                            for (i = 1; i < s[j]; ++i)
+                              fputc("ACGTN"[(int)tmp_seq[j][i]], fpo);
+                            fprintf(fpo, "\n+\n");
+                            for (i = 1; i < s[j]; ++i) 
+                              fputc(qstr[i], fpo);
+                            fprintf(fpo, "\n");
+                        }
                       }
 
                       // BFAST output
-                      fprintf(opt->fp_bfast, "@%s%s%s_%u_%u_%1u_%1u_%1u_%1u_%d:%d:%d_%d:%d:%d_%llx\n", 
-                              (NULL == opt->read_prefix) ? "" : opt->read_prefix,
-                              (NULL == opt->read_prefix) ? "" : "_",
-                              name, ext_coor[0]+1, ext_coor[1]+1, strand[0], strand[1], 0, 0,
-                              n_err[0], n_sub[0], n_indel[0], n_err[1], n_sub[1], n_indel[1],
-                              (unsigned long long)ii);
-                      if(ILLUMINA == opt->data_type || IONTORRENT == opt->data_type) {
-                          for (i = 0; i < s[j]; ++i)
-                            fputc("ACGTN"[(int)tmp_seq[j][i]], opt->fp_bfast);
-                          fprintf(opt->fp_bfast, "\n+\n%s\n", qstr);
-                      }
-                      else {
-                          fputc('A', opt->fp_bfast);
-                          for (i = 0; i < s[j]; ++i)
-                            fputc("01234"[(int)tmp_seq[j][i]], opt->fp_bfast);
-                          fprintf(opt->fp_bfast, "\n+\n");
-                          for (i = 0; i < s[j]; ++i) 
-                            fputc(qstr[i], opt->fp_bfast);
-                          fprintf(opt->fp_bfast, "\n");
+                      if (NULL != opt->fp_bfast) {
+                          fprintf(opt->fp_bfast, "@%s%s%s_%u_%u_%1u_%1u_%1u_%1u_%d:%d:%d_%d:%d:%d_%llx\n", 
+                                  (NULL == opt->read_prefix) ? "" : opt->read_prefix,
+                                  (NULL == opt->read_prefix) ? "" : "_",
+                                  name, ext_coor[0]+1, ext_coor[1]+1, strand[0], strand[1], 0, 0,
+                                  n_err[0], n_sub[0], n_indel[0], n_err[1], n_sub[1], n_indel[1],
+                                  (unsigned long long)ii);
+                          if(ILLUMINA == opt->data_type || IONTORRENT == opt->data_type) {
+                              for (i = 0; i < s[j]; ++i)
+                                fputc("ACGTN"[(int)tmp_seq[j][i]], opt->fp_bfast);
+                              fprintf(opt->fp_bfast, "\n+\n%s\n", qstr);
+                          }
+                          else {
+                              fputc('A', opt->fp_bfast);
+                              for (i = 0; i < s[j]; ++i)
+                                fputc("01234"[(int)tmp_seq[j][i]], opt->fp_bfast);
+                              fprintf(opt->fp_bfast, "\n+\n");
+                              for (i = 0; i < s[j]; ++i) 
+                                fputc(qstr[i], opt->fp_bfast);
+                              fprintf(opt->fp_bfast, "\n");
+                          }
                       }
                   }
               }
@@ -962,61 +966,65 @@ void dwgsim_core(dwgsim_opt_t * opt)
                       }
                       // BWA
                       FILE *fpo = (0 == j) ? opt->fp_bwa1: opt->fp_bwa2;
-                      if(ILLUMINA == opt->data_type || IONTORRENT == opt->data_type) {
-                          fprintf(fpo, "@%s%s%s_%u_%u_%1u_%1u_%1u_%1u_%d:%d:%d_%d:%d:%d_%llx/%d\n", 
-                                  (NULL == opt->read_prefix) ? "" : opt->read_prefix,
-                                  (NULL == opt->read_prefix) ? "" : "_",
-                                  "rand", 0, 0, 0, 0, 1, 1,
-                                  0, 0, 0, 0, 0, 0,
-                                  (unsigned long long)rand_ii,
-                                  j+1);
-                          for (i = 0; i < s[j]; ++i)
-                            fputc("ACGTN"[(int)tmp_seq[j][i]], fpo);
-                          fprintf(fpo, "\n+\n%s\n", qstr);
-                      }
-                      else {
-                          // Note: BWA ignores the adapter and the first color, so this is a misrepresentation 
-                          // in samtools.  We must first skip the first color.  Basically, a 50 color read is a 
-                          // 49 color read for BWA.
-                          //
-                          // Note: BWA outputs F3 to read1, annotated as read "2", and outputs R3 to read2,
-                          // annotated as read "1".
-                          fprintf(fpo, "@%s%s%s_%u_%u_%1u_%1u_%1u_%1u_%d:%d:%d_%d:%d:%d_%llx/%d\n", 
-                                  (NULL == opt->read_prefix) ? "" : opt->read_prefix,
-                                  (NULL == opt->read_prefix) ? "" : "_",
-                                  "rand", 0, 0, 0, 0, 1, 1,
-                                  0, 0, 0, 0, 0, 0,
-                                  (unsigned long long)rand_ii,
-                                  2 - j);
-                          //fputc('A', fpo);
-                          for (i = 1; i < s[j]; ++i)
-                            fputc("ACGTN"[(int)tmp_seq[j][i]], fpo);
-                          fprintf(fpo, "\n+\n");
-                          for (i = 1; i < s[j]; ++i) 
-                            fputc(qstr[i], fpo);
-                          fprintf(fpo, "\n");
+                      if (NULL != fpo) {
+                          if(ILLUMINA == opt->data_type || IONTORRENT == opt->data_type) {
+                              fprintf(fpo, "@%s%s%s_%u_%u_%1u_%1u_%1u_%1u_%d:%d:%d_%d:%d:%d_%llx/%d\n", 
+                                      (NULL == opt->read_prefix) ? "" : opt->read_prefix,
+                                      (NULL == opt->read_prefix) ? "" : "_",
+                                      "rand", 0, 0, 0, 0, 1, 1,
+                                      0, 0, 0, 0, 0, 0,
+                                      (unsigned long long)rand_ii,
+                                      j+1);
+                              for (i = 0; i < s[j]; ++i)
+                                fputc("ACGTN"[(int)tmp_seq[j][i]], fpo);
+                              fprintf(fpo, "\n+\n%s\n", qstr);
+                          }
+                          else {
+                              // Note: BWA ignores the adapter and the first color, so this is a misrepresentation 
+                              // in samtools.  We must first skip the first color.  Basically, a 50 color read is a 
+                              // 49 color read for BWA.
+                              //
+                              // Note: BWA outputs F3 to read1, annotated as read "2", and outputs R3 to read2,
+                              // annotated as read "1".
+                              fprintf(fpo, "@%s%s%s_%u_%u_%1u_%1u_%1u_%1u_%d:%d:%d_%d:%d:%d_%llx/%d\n", 
+                                      (NULL == opt->read_prefix) ? "" : opt->read_prefix,
+                                      (NULL == opt->read_prefix) ? "" : "_",
+                                      "rand", 0, 0, 0, 0, 1, 1,
+                                      0, 0, 0, 0, 0, 0,
+                                      (unsigned long long)rand_ii,
+                                      2 - j);
+                              //fputc('A', fpo);
+                              for (i = 1; i < s[j]; ++i)
+                                fputc("ACGTN"[(int)tmp_seq[j][i]], fpo);
+                              fprintf(fpo, "\n+\n");
+                              for (i = 1; i < s[j]; ++i) 
+                                fputc(qstr[i], fpo);
+                              fprintf(fpo, "\n");
+                          }
                       }
 
                       // BFAST output
-                      fprintf(opt->fp_bfast, "@%s%s%s_%u_%u_%1u_%1u_%1u_%1u_%d:%d:%d_%d:%d:%d_%llx\n", 
-                              (NULL == opt->read_prefix) ? "" : opt->read_prefix,
-                              (NULL == opt->read_prefix) ? "" : "_",
-                              "rand", 0, 0, 0, 0, 1, 1,
-                              0, 0, 0, 0, 0, 0,
-                              (unsigned long long)rand_ii);
-                      if(ILLUMINA == opt->data_type || IONTORRENT == opt->data_type) {
-                          for (i = 0; i < s[j]; ++i)
-                            fputc("ACGTN"[(int)tmp_seq[j][i]], opt->fp_bfast);
-                          fprintf(opt->fp_bfast, "\n+\n%s\n", qstr);
-                      }
-                      else {
-                          fputc('A', opt->fp_bfast);
-                          for (i = 0; i < s[j]; ++i)
-                            fputc("01234"[(int)tmp_seq[j][i]], opt->fp_bfast);
-                          fprintf(opt->fp_bfast, "\n+\n");
-                          for (i = 0; i < s[j]; ++i) 
-                            fputc(qstr[i], opt->fp_bfast);
-                          fprintf(opt->fp_bfast, "\n");
+                      if (NULL != opt->fp_bfast) {
+                          fprintf(opt->fp_bfast, "@%s%s%s_%u_%u_%1u_%1u_%1u_%1u_%d:%d:%d_%d:%d:%d_%llx\n", 
+                                  (NULL == opt->read_prefix) ? "" : opt->read_prefix,
+                                  (NULL == opt->read_prefix) ? "" : "_",
+                                  "rand", 0, 0, 0, 0, 1, 1,
+                                  0, 0, 0, 0, 0, 0,
+                                  (unsigned long long)rand_ii);
+                          if(ILLUMINA == opt->data_type || IONTORRENT == opt->data_type) {
+                              for (i = 0; i < s[j]; ++i)
+                                fputc("ACGTN"[(int)tmp_seq[j][i]], opt->fp_bfast);
+                              fprintf(opt->fp_bfast, "\n+\n%s\n", qstr);
+                          }
+                          else {
+                              fputc('A', opt->fp_bfast);
+                              for (i = 0; i < s[j]; ++i)
+                                fputc("01234"[(int)tmp_seq[j][i]], opt->fp_bfast);
+                              fprintf(opt->fp_bfast, "\n+\n");
+                              for (i = 0; i < s[j]; ++i) 
+                                fputc(qstr[i], opt->fp_bfast);
+                              fprintf(opt->fp_bfast, "\n");
+                          }
                       }
                   }
                   rand_ii++;
@@ -1071,12 +1079,16 @@ int main(int argc, char *argv[])
   strcpy(fn_tmp, argv[optind+1]); strcat(fn_tmp, ".mutations.vcf");
   opt->fp_vcf = xopen(fn_tmp, "w");
   if(0 == opt->muts_only) {
-      strcpy(fn_tmp, argv[optind+1]); strcat(fn_tmp, ".bfast.fastq");
-      opt->fp_bfast = xopen(fn_tmp, "w");
-      strcpy(fn_tmp, argv[optind+1]); strcat(fn_tmp, ".bwa.read1.fastq");
-      opt->fp_bwa1 = xopen(fn_tmp, "w");
-      strcpy(fn_tmp, argv[optind+1]); strcat(fn_tmp, ".bwa.read2.fastq");
-      opt->fp_bwa2 = xopen(fn_tmp, "w");
+      if (opt->output_type != OUTPUT_TYPE_BWA) {
+          strcpy(fn_tmp, argv[optind+1]); strcat(fn_tmp, ".bfast.fastq");
+          opt->fp_bfast = xopen(fn_tmp, "w");
+      }
+      if (opt->output_type != OUTPUT_TYPE_BFAST) {
+          strcpy(fn_tmp, argv[optind+1]); strcat(fn_tmp, ".bwa.read1.fastq");
+          opt->fp_bwa1 = xopen(fn_tmp, "w");
+          strcpy(fn_tmp, argv[optind+1]); strcat(fn_tmp, ".bwa.read2.fastq");
+          opt->fp_bwa2 = xopen(fn_tmp, "w");
+      }
   }
 
   // Run simulation
@@ -1084,7 +1096,13 @@ int main(int argc, char *argv[])
 
   // Close files
   if(0 == opt->muts_only) {
-      fclose(opt->fp_fa); fclose(opt->fp_bfast); fclose(opt->fp_bwa1); fclose(opt->fp_bwa2); 
+      if (opt->output_type != OUTPUT_TYPE_BWA) {
+          fclose(opt->fp_bfast); 
+      }
+      if (opt->output_type != OUTPUT_TYPE_BFAST) {
+          fclose(opt->fp_bwa1); fclose(opt->fp_bwa2); 
+      }
+      fclose(opt->fp_fa); 
   }
   if(NULL != opt->fp_fai) fclose(opt->fp_fai);
   fclose(opt->fp_mut);

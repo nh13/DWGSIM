@@ -3,6 +3,10 @@
 
 #define ERROR_RATE_NUM_RANDOM_READS 1000000
 
+#define OUTPUT_TYPE_ALL 0
+#define OUTPUT_TYPE_BWA 1
+#define OUTPUT_TYPE_BFAST 2
+
 typedef struct {
     double start, by, end;
 } error_t;
@@ -43,6 +47,7 @@ typedef struct {
     FILE *fp_fa;
     FILE *fp_fai;
     char *read_prefix;
+    int32_t output_type;
 } dwgsim_opt_t;
 
 dwgsim_opt_t* 
