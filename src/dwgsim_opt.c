@@ -32,6 +32,7 @@
 #include <stdint.h>
 #include <ctype.h>
 #include <string.h>
+#include <zlib.h>
 #include "mut.h"
 #include "dwgsim.h"
 #include "dwgsim_opt.h"

@@ -1,11 +1,14 @@
 #ifndef DWGSIM_OPT_H
 #define DWGSIM_OPT_H
 
+#include "zlib.h"
+
 #define ERROR_RATE_NUM_RANDOM_READS 1000000
 
 #define OUTPUT_TYPE_ALL 0
 #define OUTPUT_TYPE_BWA 1
 #define OUTPUT_TYPE_BFAST 2
+
 
 typedef struct {
     double start, by, end;
@@ -41,9 +44,9 @@ typedef struct {
     char *fn_regions_bed;
     FILE *fp_mut;
     FILE *fp_vcf;
-    FILE *fp_bfast;
-    FILE *fp_bwa1;
-    FILE *fp_bwa2;
+    gzFile *fp_bfast;
+    gzFile *fp_bwa1;
+    gzFile *fp_bwa2;
     FILE *fp_fa;
     FILE *fp_fai;
     char *read_prefix;
