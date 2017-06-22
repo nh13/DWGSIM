@@ -18,8 +18,10 @@ mkdir tmp
 ./dwgsim -z 13 -N 10000 samtools/examples/ex1.fa ex1.test
 
 # Test the differences
-for FILE in $(ls -1 ex1.test*)
+for GZFILE in $(ls -1 ex1.test*gz)
 do 
+	gunzip $GZFILE;
+	FILE=$(echo $GZFILE | sed -e 's_.gz$__g');
 	diff -q ${FILE} ${TESTDATADIR}/${FILE}
 done
 
