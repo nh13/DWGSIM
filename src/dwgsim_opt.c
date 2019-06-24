@@ -107,7 +107,7 @@ int dwgsim_opt_usage(dwgsim_opt_t *opt)
   fprintf(stderr, "         -r FLOAT      rate of mutations [%.4f]\n", opt->mut_rate);
   fprintf(stderr, "         -F FLOAT      frequency of given mutation to simulate low fequency somatic mutations [%.4f]\n", opt->mut_freq);
   fprintf(stderr, "                           NB: freqeuncy F refers to the first strand of mutation, therefore mutations \n"); 
-  fprintf(stderr, "                           on the second strand occour with a frequency of 1-F \n");
+  fprintf(stderr, "                           on the second strand occur with a frequency of 1-F \n");
   fprintf(stderr, "         -R FLOAT      fraction of mutations that are indels [%.2f]\n", opt->indel_frac);
   fprintf(stderr, "         -X FLOAT      probability an indel is extended [%.2f]\n", opt->indel_extend);
   fprintf(stderr, "         -I INT        the minimum length indel [%d]\n", opt->indel_min);
