@@ -68,7 +68,8 @@ dwgsim_opt_t* dwgsim_opt_init()
   opt->fn_muts_input = NULL;
   opt->fn_muts_input_type = -1;
   opt->fn_regions_bed = NULL;
-  opt->fp_mut = opt->fp_bfast = opt->fp_bwa1 = opt->fp_bwa2 = NULL;
+  opt->fp_mut = NULL;
+  opt->fp_bfast = opt->fp_bwa1 = opt->fp_bwa2 = NULL;
   opt->fp_fa = opt->fp_fai = NULL;
   opt->read_prefix = NULL;
 
@@ -302,18 +303,6 @@ dwgsim_opt_parse(dwgsim_opt_t *opt, int argc, char *argv[])
       fprintf(stderr, "Warning: remember to use the -P option with dwgsim_eval\n");
   }
 
-  if(0 < opt->length[1]){ //paired end / mate pair
-    int s = opt->length[0] + opt->length[1] + opt->is_inner;
-    double r = (s-opt->dist)*1.0/opt->std_dev;
-    if(r>6){
-      fprintf(stderr, "Error: command line option -d is too small for the read length (%d)\n",opt->dist);
-      return 0;
-    }
-    if(r>4){
-      fprintf(stderr, "Warning: command line option -d is small for the read length (%d). Generation speed could be affected.\n",opt->dist);
-    }
-  }
-  
   __check_option(opt->output_type, 0, 2, "-o");
 
   switch(muts_input_type) {
