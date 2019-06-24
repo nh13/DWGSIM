@@ -533,8 +533,7 @@ void dwgsim_core(dwgsim_opt_t * opt)
               }
           }
       }
-
-      if(0 == opt->muts_only) {
+	  else {
           if(0 == n_ref && opt->C < 0) {
               n_pairs = opt->N - n_sim;
           }
@@ -606,6 +605,7 @@ void dwgsim_core(dwgsim_opt_t * opt)
               continue;
           }
           else if (n_pairs < 0) { // NB: this should not happen
+              fprintf(stderr, "[dwgsim_core] #4 skip sequence '%s' as not enough pairs found\n", name);
               // not enough pairs
               continue;
           }
@@ -618,6 +618,7 @@ void dwgsim_core(dwgsim_opt_t * opt)
       mut_print(name, &seq, mutseq[0], mutseq[1], opt->fp_mut, opt->fp_vcf);
 
       if(0 == opt->muts_only) {
+		  int num_failed = 0;
           for (ii = 0; ii != n_pairs; ++ii, ++ctr) { // the core loop
               if(0 == (ctr % 10000)) {
                   fprintf(stderr, "\r[dwgsim_core] %llu",
@@ -713,12 +714,8 @@ void dwgsim_core(dwgsim_opt_t * opt)
                                * 5' E2 -----> .... E1 -----> 3'
                                * 3'           ....           5'
                                */
-                              if(0 == opt->is_inner) {
-                                  __gen_read(0, pos + d - s[0], ++i); 
-                              }
-                              else {
-                                  __gen_read(0, pos + s[1] + d, ++i); 
-                              }
+							  int r0_pos = (0 == opt->is_inner) ? (pos + d - s[0]) : (pos + s[1] + d - 1);
+							  __gen_read(0, r0_pos, ++i); 
                               __gen_read(1, pos, ++i);
                           }
                           else { // - strand
@@ -726,13 +723,9 @@ void dwgsim_core(dwgsim_opt_t * opt)
                                * 3'           ....            5'
                                * 5' <----- E1 .... <----- E2  3'
                                */
-                              __gen_read(0, pos + s[0], --i);
-                              if(0 == opt->is_inner) {
-                                  __gen_read(1, pos + d, --i);
-                              }
-                              else {
-                                  __gen_read(1, pos + s[0] + d + s[1], --i);
-                              }
+							  int r1_pos = (0 == opt->is_inner) ? (pos + d - 1) : (pos + s[0] + d + s[1] - 1);
+                              __gen_read(0, pos + s[0] - 1, --i);
+							  __gen_read(1, r1_pos, --i);
                           }
                       }
                       else { // opposite strand
@@ -741,25 +734,17 @@ void dwgsim_core(dwgsim_opt_t * opt)
                                * 5' E1 -----> ....           3'
                                * 3'           .... <----- E2 5'
                                */
+							  int r1_pos = (0 == opt->is_inner) ? (pos + d - 1) : (pos + s[0] + d + s[1] - 1);
                               __gen_read(0, pos, ++i);
-                              if(0 == opt->is_inner) {
-                                  __gen_read(1, pos + d, --i);
-                              }
-                              else {
-                                  __gen_read(1, pos + s[0] + d + s[1], --i);
-                              }
+							  __gen_read(1, r1_pos, --i);
                           }
                           else { // - strand
                               /*
                                * 5' E2 -----> ....           3'
                                * 3'           .... <----- E1 5'
                                */
-                              if(0 == opt->is_inner) {
-                                  __gen_read(0, pos + d, --i);
-                              }
-                              else {
-                                  __gen_read(0, pos + s[1] + d + s[0], --i); 
-                              }
+							  int r0_pos = (0 == opt->is_inner) ? (pos + d - 1) : (pos + s[1] + d + s[0] - 1); 
+							  __gen_read(0, r0_pos, --i);
                               __gen_read(1, pos, i++);
                           }
                       }
@@ -786,8 +771,14 @@ void dwgsim_core(dwgsim_opt_t * opt)
                   if (ext_coor[0] < 0 || ext_coor[1] < 0 || opt->max_n < num_n[0] || opt->max_n < num_n[1]) { // fail to generate the read(s)
                       --ii;
                       --ctr;
+					  num_failed++;
+					  if (num_failed > 10000) {
+						  fprintf(stderr, "\r[dwgsim_core] failed to generate a read after %d trials\n", num_failed);
+						  exit(1);
+					  }
                       continue;
                   }
+				  num_failed = 0;
 
                   if(SOLID == opt->data_type) {
                       // Convert to color sequence, use the first base as the adaptor
