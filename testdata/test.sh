@@ -15,16 +15,17 @@ popd
 mkdir tmp
 
 # Generate the new test data
-./dwgsim -z 13 -N 10000 samtools/examples/ex1.fa ex1.test
+./dwgsim -z 13 -N 10000 samtools/examples/ex1.fa tmp/ex1.test
 
 # Test the differences
-for GZFILE in $(ls -1 ex1.test*gz)
+for GZFILE in $(ls -1 tmp/ex1.test*gz)
 do 
 	gunzip $GZFILE;
-	FILE=$(echo $GZFILE | sed -e 's_.gz$__g');
-	diff -q ${FILE} ${TESTDATADIR}/${FILE}
+    FILE=$(basename $GZFILE .gz);
+	diff -q tmp/${FILE} ${TESTDATADIR}/${FILE}
 done
 
 # Clean up the testdata
 find ${TESTDATADIR} \! -name "*gz" -type f | grep -v sh$ | xargs rm; 
-rm -r tmp;
+
+rm -r tmp
