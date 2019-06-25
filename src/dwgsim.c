@@ -72,33 +72,33 @@ uint8_t nst_nt4_table[256] = {
     4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4,  4, 4, 4, 4
 };
 
-#define __gen_read(x, start, iter) do {									\
-    for (i = (start), k = 0, ext_coor[x] = -10; i >= 0 && i < seq.l && k < s[x]; iter) {	\
-        mut_t c = currseq->s[i], mut_type = c & mutmsk;			\
-        if (ext_coor[x] < 0) {								\
+#define __gen_read(x, start, iter) do {                                    \
+    for (i = (start), k = 0, ext_coor[x] = -10; i >= 0 && i < seq.l && k < s[x]; iter) {    \
+        mut_t c = currseq->s[i], mut_type = c & mutmsk;            \
+        if (ext_coor[x] < 0) {                                \
             if (mut_type != NOCHANGE && mut_type != SUBSTITUTE) continue; \
-            ext_coor[x] = i;								\
+            ext_coor[x] = i;                                \
             if(1 == strand[x]) ext_coor[x] -= s[x]-1; \
-        }													\
+        }                                                    \
         if (mut_type == DELETE) { \
-            ++n_indel[x];				\
+            ++n_indel[x];                \
             if(1 == strand[x]) ext_coor[x]--; \
             if(0 == k) n_indel_first[x]++; \
         } \
         else if (mut_type == NOCHANGE || mut_type == SUBSTITUTE) { \
-            tmp_seq[x][k++] = c & 0xf;						\
+            tmp_seq[x][k++] = c & 0xf;                        \
             if (mut_type == SUBSTITUTE) { \
-                ++n_sub[x];			\
+                ++n_sub[x];            \
                 if(0 == k) n_sub_first[x]++; \
-            } 												\
-        } else {											\
-            mut_t n, ins;										\
+            }                                                 \
+        } else {                                            \
+            mut_t n, ins;                                        \
             assert(mut_type == INSERT); \
-            ++n_indel[x];									\
-            n_indel_first[x]++;							\
+            ++n_indel[x];                                    \
+            n_indel_first[x]++;                            \
             if(1 == mut_get_ins(currseq, i, &n, &ins)) { \
                 if(0 == strand[x]) { \
-                    if(k < s[x]) tmp_seq[x][k++] = c & 0xf;						\
+                    if(k < s[x]) tmp_seq[x][k++] = c & 0xf;                        \
                     while(n > 0 && k < s[x]) { \
                         tmp_seq[x][k++] = ins & 0x3;                \
                         --n, ins >>= 2; \
@@ -109,7 +109,7 @@ uint8_t nst_nt4_table[256] = {
                         tmp_seq[x][k++] = (ins >> ((n-1) << 1) & 0x3);                \
                         --n; \
                     } \
-                    if (k < s[x]) tmp_seq[x][k++] = c & 0xf;						\
+                    if (k < s[x]) tmp_seq[x][k++] = c & 0xf;                        \
                 } \
             } else { \
                 int32_t byte_index, bit_index; \
@@ -118,7 +118,7 @@ uint8_t nst_nt4_table[256] = {
                 insertion = mut_get_ins_long_n(currseq->ins[ins], &num_ins); \
                 if(0 == strand[x]) { \
                     byte_index = mut_packed_len(num_ins) - 1; bit_index = (num_ins-1) & 0x3 ; \
-                    if(k < s[x]) tmp_seq[x][k++] = c & 0xf;						\
+                    if(k < s[x]) tmp_seq[x][k++] = c & 0xf;                        \
                     while(num_ins > 0 && k < s[x]) { \
                         assert(0 <= byte_index); \
                         tmp_seq[x][k++] = (insertion[byte_index] >> (bit_index << 1)) & 0x3;                \
@@ -141,15 +141,15 @@ uint8_t nst_nt4_table[256] = {
                             byte_index++; \
                         } \
                     } \
-                    if (k < s[x]) tmp_seq[x][k++] = c & 0xf;						\
+                    if (k < s[x]) tmp_seq[x][k++] = c & 0xf;                        \
                 } \
-            }													\
+            }                                                    \
         } \
-    }														\
-    if (k != s[x]) ext_coor[x] = -10;						\
+    }                                                        \
+    if (k != s[x]) ext_coor[x] = -10;                        \
     if (1 == strand[x]) { \
         for (k = 0; k < s[x]; ++k) tmp_seq[x][k] = tmp_seq[x][k] < 4? 3 - tmp_seq[x][k] : 4; \
-    } 														\
+    }                                                         \
 } while (0)
 
 /* Simple normal random number generator, copied from genran.c */
@@ -537,7 +537,7 @@ void dwgsim_core(dwgsim_opt_t * opt)
               }
           }
       }
-	  else {
+      else {
           if(0 == n_ref && opt->C < 0) {
               n_pairs = opt->N - n_sim;
           }
@@ -622,7 +622,7 @@ void dwgsim_core(dwgsim_opt_t * opt)
       mut_print(name, &seq, mutseq[0], mutseq[1], opt->fp_mut, opt->fp_vcf);
 
       if(0 == opt->muts_only) {
-		  int num_failed = 0;
+          int num_failed = 0;
           for (ii = 0; ii != n_pairs; ++ii, ++ctr) { // the core loop
               if(0 == (ctr % 10000)) {
                   fprintf(stderr, "\r[dwgsim_core] %llu",
@@ -722,8 +722,8 @@ void dwgsim_core(dwgsim_opt_t * opt)
                                * 5' E2 -----> .... E1 -----> 3'
                                * 3'           ....           5'
                                */
-							  int r0_pos = (0 == opt->is_inner) ? (pos + d - s[0]) : (pos + s[1] + d - 1);
-							  __gen_read(0, r0_pos, ++i); 
+                              int r0_pos = (0 == opt->is_inner) ? (pos + d - s[0]) : (pos + s[1] + d - 1);
+                              __gen_read(0, r0_pos, ++i); 
                               __gen_read(1, pos, ++i);
                           }
                           else { // - strand
@@ -731,9 +731,9 @@ void dwgsim_core(dwgsim_opt_t * opt)
                                * 3'           ....            5'
                                * 5' <----- E1 .... <----- E2  3'
                                */
-							  int r1_pos = (0 == opt->is_inner) ? (pos + d - 1) : (pos + s[0] + d + s[1] - 1);
+                              int r1_pos = (0 == opt->is_inner) ? (pos + d - 1) : (pos + s[0] + d + s[1] - 1);
                               __gen_read(0, pos + s[0] - 1, --i);
-							  __gen_read(1, r1_pos, --i);
+                              __gen_read(1, r1_pos, --i);
                           }
                       }
                       else { // opposite strand
@@ -742,17 +742,17 @@ void dwgsim_core(dwgsim_opt_t * opt)
                                * 5' E1 -----> ....           3'
                                * 3'           .... <----- E2 5'
                                */
-							  int r1_pos = (0 == opt->is_inner) ? (pos + d - 1) : (pos + s[0] + d + s[1] - 1);
+                              int r1_pos = (0 == opt->is_inner) ? (pos + d - 1) : (pos + s[0] + d + s[1] - 1);
                               __gen_read(0, pos, ++i);
-							  __gen_read(1, r1_pos, --i);
+                              __gen_read(1, r1_pos, --i);
                           }
                           else { // - strand
                               /*
                                * 5' E2 -----> ....           3'
                                * 3'           .... <----- E1 5'
                                */
-							  int r0_pos = (0 == opt->is_inner) ? (pos + d - 1) : (pos + s[1] + d + s[0] - 1); 
-							  __gen_read(0, r0_pos, --i);
+                              int r0_pos = (0 == opt->is_inner) ? (pos + d - 1) : (pos + s[1] + d + s[0] - 1); 
+                              __gen_read(0, r0_pos, --i);
                               __gen_read(1, pos, i++);
                           }
                       }
@@ -779,14 +779,14 @@ void dwgsim_core(dwgsim_opt_t * opt)
                   if (ext_coor[0] < 0 || ext_coor[1] < 0 || opt->max_n < num_n[0] || opt->max_n < num_n[1]) { // fail to generate the read(s)
                       --ii;
                       --ctr;
-					  num_failed++;
-					  if (num_failed > 10000) {
-						  fprintf(stderr, "\r[dwgsim_core] failed to generate a read after %d trials\n", num_failed);
-						  exit(1);
-					  }
+                      num_failed++;
+                      if (num_failed > 10000) {
+                          fprintf(stderr, "\r[dwgsim_core] failed to generate a read after %d trials\n", num_failed);
+                          exit(1);
+                      }
                       continue;
                   }
-				  num_failed = 0;
+                  num_failed = 0;
 
                   if(SOLID == opt->data_type) {
                       // Convert to color sequence, use the first base as the adaptor
@@ -1071,7 +1071,7 @@ int main(int argc, char *argv[])
   }
 
   // Open files
-  opt->fp_fa =	xopen(argv[optind+0], "r");
+  opt->fp_fa = xopen(argv[optind+0], "r");
   strcpy(fn_fai, argv[optind+0]); strcat(fn_fai, ".fai");
   opt->fp_fai = fopen(fn_fai, "r"); // NB: depends on returning NULL;
   strcpy(fn_tmp, argv[optind+1]); strcat(fn_tmp, ".mutations.txt");
