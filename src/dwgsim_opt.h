@@ -31,6 +31,7 @@ typedef struct {
     int32_t max_n;
     int32_t data_type;
     int32_t strandedness;
+    int32_t read_one_strand;
     int8_t *flow_order;
     int32_t flow_order_len;
     int32_t use_base_error;

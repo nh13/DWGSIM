@@ -57,6 +57,7 @@ dwgsim_opt_t* dwgsim_opt_init()
   opt->rand_read = 0.05;
   opt->data_type = ILLUMINA;
   opt->strandedness = 0;
+  opt->read_one_strand = 0;
   opt->max_n = 0;
   opt->flow_order = NULL;
   opt->flow_order_len = 0;
@@ -118,10 +119,14 @@ int dwgsim_opt_usage(dwgsim_opt_t *opt)
   fprintf(stderr, "                           0: Illumina\n");
   fprintf(stderr, "                           1: SOLiD\n");
   fprintf(stderr, "                           2: Ion Torrent\n");
-  fprintf(stderr, "         -S INT        generate reads [%d]:\n", opt->strandedness);
+  fprintf(stderr, "         -S INT        generate paired end reads with orientation [%d]:\n", opt->strandedness);
   fprintf(stderr, "                           0: default (opposite strand for Illumina, same strand for SOLiD/Ion Torrent)\n");
   fprintf(stderr, "                           1: same strand (mate pair)\n");
   fprintf(stderr, "                           2: opposite strand (paired end)\n");
+  fprintf(stderr, "         -A INT        generate paired end reads with read one [%d]:\n", opt->read_one_strand);
+  fprintf(stderr, "                           0: default (both, random)\n");
+  fprintf(stderr, "                           1: forward genomic strand\n");
+  fprintf(stderr, "                           2: reverse genomic strand\n");
   fprintf(stderr, "         -f STRING     the flow order for Ion Torrent data [%s]\n", (char*)opt->flow_order);
   fprintf(stderr, "         -B            use a per-base error rate for Ion Torrent data [%s]\n", __IS_TRUE(opt->use_base_error));
   fprintf(stderr, "         -H            haploid mode [%s]\n", __IS_TRUE(opt->is_hap));
@@ -198,7 +203,7 @@ dwgsim_opt_parse(dwgsim_opt_t *opt, int argc, char *argv[])
   int c;
   int muts_input_type = 0;
   
-  while ((c = getopt(argc, argv, "id:s:N:C:1:2:e:E:r:F:R:X:I:c:S:n:y:BHf:z:Mm:b:v:x:P:q:Q:o:h")) >= 0) {
+  while ((c = getopt(argc, argv, "id:s:N:C:1:2:e:E:r:F:R:X:I:c:S:A:n:y:BHf:z:Mm:b:v:x:P:q:Q:o:h")) >= 0) {
       switch (c) {
         case 'i': opt->is_inner = 1; break;
         case 'd': opt->dist = dwgsim_atoi(optarg, 'd', 0); break;
@@ -216,6 +221,7 @@ dwgsim_opt_parse(dwgsim_opt_t *opt, int argc, char *argv[])
         case 'I': opt->indel_min = dwgsim_atoi(optarg, 'I', 0); break;
         case 'c': opt->data_type = dwgsim_atoi(optarg, 'c', 0); break;
         case 'S': opt->strandedness = dwgsim_atoi(optarg, 'S', 0); break;
+        case 'A': opt->read_one_strand = dwgsim_atoi(optarg, 'A', 0); break;
         case 'n': opt->max_n = dwgsim_atoi(optarg, 'n', 0); break;
         case 'y': opt->rand_read = atof(optarg); break;
         case 'f': 
@@ -284,6 +290,7 @@ dwgsim_opt_parse(dwgsim_opt_t *opt, int argc, char *argv[])
   __check_option(opt->indel_min, 1, INT32_MAX, "-I");
   __check_option(opt->data_type, 0, 2, "-c");
   __check_option(opt->strandedness, 0, 2, "-S");
+  __check_option(opt->read_one_strand, 0, 2, "-A");
   __check_option(opt->max_n, 0, INT32_MAX, "-n");
   __check_option(opt->rand_read, 0, 1.0, "-y");
   if(IONTORRENT == opt->data_type && NULL == opt->flow_order) {

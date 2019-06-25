@@ -153,7 +153,6 @@ uint8_t nst_nt4_table[256] = {
 } while (0)
 
 /* Simple normal random number generator, copied from genran.c */
-
 double ran_normal()
 { 
   static int iset = 0; 
@@ -173,6 +172,11 @@ double ran_normal()
       iset = 0;
       return gset;
   }
+}
+
+void unreachable(char *message) {
+    fprintf(stderr, "\n[dwgsim_core] Error: %s\n", message);
+    exit(1);
 }
 
 int32_t ran_num(double prob, int32_t n)
@@ -687,23 +691,27 @@ void dwgsim_core(dwgsim_opt_t * opt)
                   n_sub_first[0] = n_sub_first[1] = n_indel_first[0] = n_indel_first[1] = n_err_first[0] = n_err_first[1] = 0;
                   num_n[0]=num_n[1]=0;
 
-                  // strand
-                  if(2 == opt->strandedness || (0 == opt->strandedness && ILLUMINA == opt->data_type)) {
-                      // opposite strand by default for Illumina
-                      strand[0] = 0; strand[1] = 1; 
+                  // set read one's strand
+                  switch(opt->read_one_strand) {
+                      case 0: strand[0] = (drand48() < 0.5) ? 1 : 0; break;
+                      case 1: strand[0] = 0; break;
+                      case 2: strand[0] = 1; break;
+                      default: unreachable("read strand was not between 0-2");
                   }
-                  else if(1 == opt->strandedness || (0 == opt->strandedness && (SOLID == opt->data_type || IONTORRENT == opt->data_type))) {
-                      // same strands by default for SOLiD
-                      strand[0] = 0; strand[1] = 0; 
-                  }
-                  else {
-                      // should not reach here
-                      assert(1 == 0);
-                  }
-                  if (drand48() < 0.5) { // which strand ?
-                      // Flip strands 
-                      strand[0] = (1 + strand[0]) % 2;
-                      strand[1] = (1 + strand[1]) % 2;
+
+                  // set read two's strand
+                  switch(opt->strandedness) {
+                      case 0: // default to data type
+                          switch (opt->data_type) {
+                              case ILLUMINA: strand[1] = 1 - strand[0]; break; // paired end for Illumina (opposite strand)
+                              case SOLID: 
+                              case IONTORRENT: strand[1] = strand[0]; break; // mate pair for SOLiD and IonTorrent (same strand)
+                              default: unreachable("data type was not between 0-2");
+                          }
+                          break;
+                      case 1: strand[1] = strand[0]; break; // mate pair (same strand)
+                      case 2: strand[1] = 1 - strand[0]; break; // paired end (opposite strand)
+                      default: unreachable("strandedness was not between 0-2");
                   }
 
                   // generate the reads in base space
