@@ -3,4 +3,8 @@ language: c
 compiler:
 - clang
 - gcc
+
+arch:
+  - amd64
+  - ppc64le
 script: make && make test
