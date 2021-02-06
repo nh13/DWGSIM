@@ -58,7 +58,7 @@ muts_txt_t *muts_txt_init(FILE *fp, contigs_t *c)
           prev_pos = 0;
       }
       if(c->n == i) {
-          fprintf(stderr, "Error: contig not found [%s]\n", name);
+          fprintf(stderr, "Error: mutation contig not found or out of order [%s]\n", name);
           exit(1);
       }
       else if(pos <= 0 || c->contigs[i].len < pos) {
