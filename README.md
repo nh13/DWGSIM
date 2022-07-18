@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/nh13/DWGSIM.svg?branch=master)](https://travis-ci.org/nh13/DWGSIM)
+[![Build Status](https://github.com/nh13/DWGSIM/actions/workflows/testing.yml/badge.svg)](https://github.com/nh13/DWGSIM/actions/workflows/testing.yml)
 
 Welcome to DWGSIM.
 
