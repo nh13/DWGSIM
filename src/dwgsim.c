@@ -571,10 +571,14 @@ void dwgsim_core(dwgsim_opt_t * opt)
                                 case 'G':
                                 case 't':
                                 case 'T':
-                                  break;                                                                                                                                                                         default:     
-                                    num_n++;                                                                                                                                                                         break;     
-                              }                                                                                                                                                                            }                  
-                      }                                                                                                                                                                            } 
+                                    break;
+                                default:
+                                    num_n++;
+                                    break;
+                              }
+                          }
+                      }
+                  }
                   if(0.95 < num_n / (double)l) { // TODO: arbitrary cutoff
                       fprintf(stderr, "[dwgsim_core] #1 skip sequence '%s' as %d out of %d bases are non-ACGT\n", name, num_n, l);
                       contig_i++;
@@ -682,7 +686,7 @@ void dwgsim_core(dwgsim_opt_t * opt)
                                || pos >= seq.l 
                                || pos + d - 1 >= seq.l 
                                || (0 < s[1] && 0 == opt->is_inner && ((0 < s[0] && d <= s[1]) || (d <= s[0] && 0 < s[1])))
-                               || 0 == regions_bed_query(regions_bed, contig_i, pos, pos + s[0] + s[1] + d - 1));
+                               || 0 == regions_bed_query(regions_bed, contig_i, pos, pos + d));
                   }
 
                   // generate the read sequences
