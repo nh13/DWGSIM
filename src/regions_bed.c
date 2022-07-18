@@ -58,7 +58,7 @@ regions_bed_txt *regions_bed_init(FILE *fp, contigs_t *c)
           i++;
       }
       if(c->n == i) {
-          fprintf(stderr, "Error: contig not found [%s]\n", name);
+          fprintf(stderr, "Error: contig not found [%s].  Are you sure your BED is coordinate sorted?\n", name);
           exit(1);
       }
       else if(c->contigs[i].len < start) {
