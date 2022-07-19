@@ -27,7 +27,7 @@ print_usage(dwgsim_eval_args_t *args)
   fprintf(stderr, "\t\t\t\t\t1: by alignment score\n");
   fprintf(stderr, "\t\t\t\t\t2: by suboptimal alignment score\n");
   fprintf(stderr, "\t\t\t\t\t3: by alignment score - suboptimal alignment score\n");
-  fprintf(stderr, "\t-b\t\talignments are from BWA (SOLiD only) [%s]\n", __IS_TRUE(args->b));
+  fprintf(stderr, "\t-b\t\talignments are from BWA (for SOLiD data only) [%s]\n", __IS_TRUE(args->b));
   fprintf(stderr, "\t-c\t\tcolor space alignments [%s]\n", __IS_TRUE(args->c));
   fprintf(stderr, "\t-d\tINT\tdivide quality/alignment score by this factor [%d]\n", args->d);
   fprintf(stderr, "\t-g\t\tgap \"wiggle\" [%d]\n", args->g);
