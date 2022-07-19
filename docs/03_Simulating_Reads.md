@@ -6,7 +6,7 @@
   * [Read names explained](#read-names-explained)
   * [Mate pair or paired end modes](#mate-pair-or-paired-end-modes)
   * [Output mutations file](#output-mutations-file)
-  * [output FASTQ files](#output-fastq-files)
+  * [Output FASTQ files](#output-fastq-files)
 
 <!---toc end-->
 
@@ -35,7 +35,7 @@ The following output will be created:
 | output.bwa.read1.fastq.gz | FASTQ containing only read one |
 | output.bwa.read2.fastq.gz | FASTQ containing only read two |
 | output.mutations.vcf | VCF containing simulated mutations |
-| output.mutations.txt | TXT in a custom format containing simulated mutations (see [below](#output-mutations-file) |
+| output.mutations.txt | TXT in a custom format containing simulated mutations (see [below](#output-mutations-file)) |
 
 
 Notes:
@@ -112,7 +112,7 @@ There are file columns:
 4. the new reference base(s)
 5. the variant strand(s)
 
-SNPs are represented on one line, and in the case of heterozygous mutations, the new reference base is an [http://www.bioinformatics.org/sms/iupac.html IUPAC] code.
+SNPs are represented on one line, and in the case of heterozygous mutations, the new reference base is an [IUPAC](http://www.bioinformatics.org/sms/iupac.html) code.
 
 ```
  contig4   4   T   K   1
@@ -144,7 +144,7 @@ Multi-base deletions are show on consecutive lines.
 
 The above shows a two base homozygous deletion of positions 22 and 23 on the second strand.
 
-## output FASTQ files
+## Output FASTQ files
 
 Three FASTQ files are produced, for use with BFAST (interleaved FASTQ) and BWA (one FASTQ per read end).
 
