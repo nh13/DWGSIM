@@ -598,22 +598,32 @@ void dwgsim_core(dwgsim_opt_t * opt)
 
           // for paired end/mate pair, make sure we have enough bases in this
           // sequence
-          if (0 < opt->length[1] && l < opt->dist + 3 * opt->std_dev) {
+          int32_t max_read_length = opt->length[0] > opt->length[1] ? opt->length[0] : opt->length[1];
+          if (opt->amplicons == 1) {
+              if (l < max_read_length) {
+                  if(0 == prev_skip) fprintf(stderr, "\n");
+                  prev_skip = 1;
+                  fprintf(stderr, "[dwgsim_core] #2 skip sequence '%s' as it is shorter than the read length %d < %d!\n", name, l, max_read_length);
+                  contig_i++;
+                  continue;
+              }
+          }
+          else if (0 < opt->length[1] && l < opt->dist + 3 * opt->std_dev) {
               if(0 == prev_skip) fprintf(stderr, "\n");
               prev_skip = 1;
-              fprintf(stderr, "[dwgsim_core] #2 skip sequence '%s' as it is shorter than %f!\n", name, opt->dist + 3 * opt->std_dev);
+              fprintf(stderr, "[dwgsim_core] #3 skip sequence '%s' as it is shorter than %f!\n", name, opt->dist + 3 * opt->std_dev);
               contig_i++;
               continue;
           }
           else if (l < opt->length[0] || (0 < opt->length[1] && l < opt->length[1])) {
               if(0 == prev_skip) fprintf(stderr, "\n");
               prev_skip = 1;
-              fprintf(stderr, "[dwgsim_core] #3 skip sequence '%s' as it is shorter than %d!\n", name, (l < opt->length[0]) ? opt->length[0] : opt->length[1]);
+              fprintf(stderr, "[dwgsim_core] #4 skip sequence '%s' as it is shorter than %d!\n", name, (l < opt->length[0]) ? opt->length[0] : opt->length[1]);
               contig_i++;
               continue;
           }
           else if (n_pairs < 0) { // NB: this should not happen
-              fprintf(stderr, "[dwgsim_core] #4 skip sequence '%s' as not enough pairs found\n", name);
+              fprintf(stderr, "[dwgsim_core] #5 skip sequence '%s' as not enough pairs found\n", name);
               // not enough pairs
               continue;
           }
@@ -641,8 +651,11 @@ void dwgsim_core(dwgsim_opt_t * opt)
               s[0] = size[0]; s[1] = size[1];
 
               if(opt->rand_read < drand48()) { 
-
-                  if(NULL == regions_bed) {
+                  if (opt->amplicons == 1) {
+                      pos = 0;
+                      d = seq.l;
+                  }
+                  else if (NULL == regions_bed) {
                       do { // avoid boundary failure
                           if(0 < s[1]) { // paired end/mate pair
                               ran = ran_normal();
@@ -726,7 +739,13 @@ void dwgsim_core(dwgsim_opt_t * opt)
                                * 5' E2 -----> .... E1 -----> 3'
                                * 3'           ....           5'
                                */
-                              int r0_pos = (0 == opt->is_inner) ? (pos + d - s[0]) : (pos + s[1] + d - 1);
+                              int r0_pos;
+                              if (opt->amplicons == 1) {
+                                  r0_pos = seq.l - 1;
+                              } 
+                              else {
+                                  r0_pos = (0 == opt->is_inner) ? (pos + d - s[0]) : (pos + s[1] + d - 1);
+                              }
                               __gen_read(0, r0_pos, ++i); 
                               __gen_read(1, pos, ++i);
                           }
@@ -735,7 +754,13 @@ void dwgsim_core(dwgsim_opt_t * opt)
                                * 3'           ....            5'
                                * 5' <----- E1 .... <----- E2  3'
                                */
-                              int r1_pos = (0 == opt->is_inner) ? (pos + d - 1) : (pos + s[0] + d + s[1] - 1);
+                              int r1_pos;
+                              if (opt->amplicons == 1) {
+                                  r1_pos = seq.l - 1;
+                              }
+                              else {
+                                  r1_pos = (0 == opt->is_inner) ? (pos + d - 1) : (pos + s[0] + d + s[1] - 1);
+                              }
                               __gen_read(0, pos + s[0] - 1, --i);
                               __gen_read(1, r1_pos, --i);
                           }
@@ -746,7 +771,13 @@ void dwgsim_core(dwgsim_opt_t * opt)
                                * 5' E1 -----> ....           3'
                                * 3'           .... <----- E2 5'
                                */
-                              int r1_pos = (0 == opt->is_inner) ? (pos + d - 1) : (pos + s[0] + d + s[1] - 1);
+                              int r1_pos;
+                              if (opt->amplicons == 1) {
+                                  r1_pos = seq.l - 1;
+                              }
+                              else {
+                                  r1_pos = (0 == opt->is_inner) ? (pos + d - 1) : (pos + s[0] + d + s[1] - 1);
+                              }
                               __gen_read(0, pos, ++i);
                               __gen_read(1, r1_pos, --i);
                           }
@@ -755,7 +786,13 @@ void dwgsim_core(dwgsim_opt_t * opt)
                                * 5' E2 -----> ....           3'
                                * 3'           .... <----- E1 5'
                                */
-                              int r0_pos = (0 == opt->is_inner) ? (pos + d - 1) : (pos + s[1] + d + s[0] - 1); 
+                              int r0_pos;
+                              if (opt->amplicons == 1) {
+                                  r0_pos = seq.l - 1;
+                              } 
+                              else {
+                                  r0_pos = (0 == opt->is_inner) ? (pos + d - 1) : (pos + s[1] + d + s[0] - 1); 
+                              }
                               __gen_read(0, r0_pos, --i);
                               __gen_read(1, pos, i++);
                           }
@@ -764,6 +801,9 @@ void dwgsim_core(dwgsim_opt_t * opt)
                   else { // fragment
                       if(0 == strand[0]) {
                           __gen_read(0, pos, ++i); // + strand
+                      }
+                      else if (opt->amplicons == 1) {
+                          __gen_read(0, seq.l - 1, --i); // - strand
                       }
                       else {
                           __gen_read(0, pos + s[0] - 1, --i); // - strand

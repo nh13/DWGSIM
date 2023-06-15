@@ -73,6 +73,7 @@ dwgsim_opt_t* dwgsim_opt_init()
   opt->fp_bfast = opt->fp_bwa1 = opt->fp_bwa2 = NULL;
   opt->fp_fa = opt->fp_fai = NULL;
   opt->read_prefix = NULL;
+  opt->amplicons = 0;
 
   return opt;
 }
@@ -144,6 +145,7 @@ int dwgsim_opt_usage(dwgsim_opt_t *opt)
   fprintf(stderr, "                           0: interleaved (bfast) and per-read-end (bwa)\n");
   fprintf(stderr, "                           1: per-read-end (bwa) only\n");
   fprintf(stderr, "                           2: interleaved (bfast) only\n");
+  fprintf(stderr, "         -a            assume each contig is an amplicon, so read pairs will sequence the full amplicon [%s]\n", __IS_TRUE(opt->amplicons));
   fprintf(stderr, "         -h            print this message\n");
   fprintf(stderr, "\n");
   fprintf(stderr, "Note: For SOLiD mate pair reads and BFAST, the first read is F3 and the second is R3. For SOLiD mate pair reads\n");
@@ -203,7 +205,7 @@ dwgsim_opt_parse(dwgsim_opt_t *opt, int argc, char *argv[])
   int c;
   int muts_input_type = 0;
   
-  while ((c = getopt(argc, argv, "id:s:N:C:1:2:e:E:r:F:R:X:I:c:S:A:n:y:BHf:z:Mm:b:v:x:P:q:Q:o:h")) >= 0) {
+  while ((c = getopt(argc, argv, "id:s:N:C:1:2:e:E:r:F:R:X:I:c:S:A:n:y:BHf:z:Mm:b:v:x:P:q:Q:o:ah")) >= 0) {
       switch (c) {
         case 'i': opt->is_inner = 1; break;
         case 'd': opt->dist = dwgsim_atoi(optarg, 'd', 0); break;
@@ -241,6 +243,7 @@ dwgsim_opt_parse(dwgsim_opt_t *opt, int argc, char *argv[])
         case 'q': opt->fixed_quality = strdup(optarg); break;
         case 'Q': opt->quality_std = atof(optarg); break;
         case 'o': opt->output_type = atoi(optarg); break;
+        case 'a': opt->amplicons = 1; break;
         default: fprintf(stderr, "Unrecognized option: -%c\n", c); return 0;
       }
   }
@@ -395,6 +398,12 @@ dwgsim_opt_parse(dwgsim_opt_t *opt, int argc, char *argv[])
   }
   
   __check_option(opt->muts_only, 0, 1, "-M");
+  __check_option(opt->amplicons, 0, 1, "-a");
+
+  if (opt->amplicons == 1 && opt->fn_regions_bed != NULL) {
+      fprintf(stderr, "Error: cannot use a regions BED file (-x) when simulating amplicons (-a)\n");
+      return 0;
+  }
 
   return 1;
 }

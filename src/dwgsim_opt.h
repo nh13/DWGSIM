@@ -52,6 +52,7 @@ typedef struct {
     FILE *fp_fai;
     char *read_prefix;
     int32_t output_type;
+    int32_t amplicons;
 } dwgsim_opt_t;
 
 dwgsim_opt_t* 
