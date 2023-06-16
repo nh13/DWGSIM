@@ -498,7 +498,7 @@ void dwgsim_core(dwgsim_opt_t * opt)
       contigs = NULL;
   }
 
-  if(0 == opt->muts_only) {
+  if(opt->output_type != OUTPUT_TYPE_MUTS) {
       fprintf(stderr, "[dwgsim_core] Currently on: \n0");
   }
   else {
@@ -508,8 +508,8 @@ void dwgsim_core(dwgsim_opt_t * opt)
   while ((l = seq_read_fasta(opt->fp_fa, &seq, name, 0)) >= 0) {
       int64_t n_pairs = 0;
       n_ref--;
-      
-      if(1 == opt->muts_only) {
+
+      if(opt->output_type == OUTPUT_TYPE_MUTS) {
           fprintf(stderr, "\r[dwgsim_core] Currently on: %s", name);
           if(name_len_max < strlen(name)) {
               name_len_max = strlen(name);
@@ -616,9 +616,11 @@ void dwgsim_core(dwgsim_opt_t * opt)
       // generate mutations and print them out
       mutseq[0] = mutseq_init(); mutseq[1] = mutseq_init();
       mut_diref(opt, &seq, mutseq[0], mutseq[1], contig_i, muts_input);
-      mut_print(name, &seq, mutseq[0], mutseq[1], opt->fp_mut, opt->fp_vcf);
+      if(opt->output_type != OUTPUT_TYPE_READS) {
+          mut_print(name, &seq, mutseq[0], mutseq[1], opt->fp_mut, opt->fp_vcf);
+      }
 
-      if(0 == opt->muts_only) {
+      if(opt->output_type != OUTPUT_TYPE_MUTS) {
           int num_failed = 0;
           for (ii = 0; ii != n_pairs; ++ii, ++ctr) { // the core loop
               if(0 == (ctr % 10000)) {
@@ -1113,16 +1115,18 @@ int main(int argc, char *argv[])
   opt->fp_fa = xopen(argv[optind+0], "r");
   snprintf(fn_fai, sizeof(fn_fai), "%s.fai", argv[optind+0]);
   opt->fp_fai = fopen(fn_fai, "r"); // NB: depends on returning NULL;
-  snprintf(fn_tmp, sizeof(fn_tmp), "%s.mutations.txt", argv[optind+1]);
-  opt->fp_mut = xopen(fn_tmp, "w");
-  snprintf(fn_tmp, sizeof(fn_tmp), "%s.mutations.vcf", argv[optind+1]);
-  opt->fp_vcf = xopen(fn_tmp, "w");
-  if(0 == opt->muts_only) {
-      if (opt->output_type != OUTPUT_TYPE_BWA) {
+  if(opt->output_type != OUTPUT_TYPE_READS) {
+      snprintf(fn_tmp, sizeof(fn_tmp), "%s.mutations.txt", argv[optind+1]);
+      opt->fp_mut = xopen(fn_tmp, "w");
+      snprintf(fn_tmp, sizeof(fn_tmp), "%s.mutations.vcf", argv[optind+1]);
+      opt->fp_vcf = xopen(fn_tmp, "w");
+  }
+  if(opt->output_type != OUTPUT_TYPE_MUTS) {
+      if (opt->reads_output_type != READS_OUTPUT_TYPE_BWA) {
           snprintf(fn_tmp, sizeof(fn_tmp), "%s.bfast.fastq.gz", argv[optind+1]);
           opt->fp_bfast = gzopen(fn_tmp, "w");
       }
-      if (opt->output_type != OUTPUT_TYPE_BFAST) {
+      if (opt->reads_output_type != READS_OUTPUT_TYPE_BFAST) {
           snprintf(fn_tmp, sizeof(fn_tmp), "%s.bwa.read1.fastq.gz", argv[optind+1]);
           opt->fp_bwa1 = gzopen(fn_tmp, "w");
           snprintf(fn_tmp, sizeof(fn_tmp), "%s.bwa.read2.fastq.gz", argv[optind+1]);
@@ -1134,18 +1138,20 @@ int main(int argc, char *argv[])
   dwgsim_core(opt);
 
   // Close files
-  if(0 == opt->muts_only) {
-      if (opt->output_type != OUTPUT_TYPE_BWA) {
-          gzclose(opt->fp_bfast); 
-      }
-      if (opt->output_type != OUTPUT_TYPE_BFAST) {
-          gzclose(opt->fp_bwa1); gzclose(opt->fp_bwa2); 
-      }
-      fclose(opt->fp_fa); 
-  }
   if(NULL != opt->fp_fai) fclose(opt->fp_fai);
-  fclose(opt->fp_mut);
-  fclose(opt->fp_vcf);
+  if(opt->output_type != OUTPUT_TYPE_READS) {
+      fclose(opt->fp_mut);
+      fclose(opt->fp_vcf);
+  }
+  if(opt->output_type != OUTPUT_TYPE_MUTS) {
+      if (opt->reads_output_type != READS_OUTPUT_TYPE_BWA) {
+          gzclose(opt->fp_bfast);
+      }
+      if (opt->reads_output_type != READS_OUTPUT_TYPE_BFAST) {
+          gzclose(opt->fp_bwa1); gzclose(opt->fp_bwa2);
+      }
+      fclose(opt->fp_fa);
+  }
 
   dwgsim_opt_destroy(opt);
 
