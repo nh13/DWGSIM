@@ -174,7 +174,7 @@ double ran_normal()
   }
 }
 
-void unreachable(char *message) {
+void unreachable_exit(char *message) {
     fprintf(stderr, "\n[dwgsim_core] Error: %s\n", message);
     exit(1);
 }
@@ -713,7 +713,7 @@ void dwgsim_core(dwgsim_opt_t * opt)
                       case 0: strand[0] = (drand48() < 0.5) ? 1 : 0; break;
                       case 1: strand[0] = 0; break;
                       case 2: strand[0] = 1; break;
-                      default: unreachable("read strand was not between 0-2");
+                      default: unreachable_exit("read strand was not between 0-2");
                   }
 
                   // set read two's strand
@@ -723,12 +723,12 @@ void dwgsim_core(dwgsim_opt_t * opt)
                               case ILLUMINA: strand[1] = 1 - strand[0]; break; // paired end for Illumina (opposite strand)
                               case SOLID: 
                               case IONTORRENT: strand[1] = strand[0]; break; // mate pair for SOLiD and IonTorrent (same strand)
-                              default: unreachable("data type was not between 0-2");
+                              default: unreachable_exit("data type was not between 0-2");
                           }
                           break;
                       case 1: strand[1] = strand[0]; break; // mate pair (same strand)
                       case 2: strand[1] = 1 - strand[0]; break; // paired end (opposite strand)
-                      default: unreachable("strandedness was not between 0-2");
+                      default: unreachable_exit("strandedness was not between 0-2");
                   }
 
                   // generate the reads in base space
