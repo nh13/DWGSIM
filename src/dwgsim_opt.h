@@ -45,9 +45,9 @@ typedef struct {
     char *fn_regions_bed;
     FILE *fp_mut;
     FILE *fp_vcf;
-    gzFile *fp_bfast;
-    gzFile *fp_bwa1;
-    gzFile *fp_bwa2;
+    gzFile fp_bfast;
+    gzFile fp_bwa1;
+    gzFile fp_bwa2;
     FILE *fp_fa;
     FILE *fp_fai;
     char *read_prefix;

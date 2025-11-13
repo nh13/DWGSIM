@@ -55,10 +55,10 @@ mutseq_init();
 void
 mutseq_destroy(mutseq_t *seq);
 
-inline int32_t
+int32_t
 mut_get_ins_bytes(int32_t n);
 
-inline uint8_t*
+uint8_t*
 mut_get_ins_long_n(uint8_t *ins, uint32_t *n);
 
 mut_t

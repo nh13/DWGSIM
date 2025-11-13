@@ -901,7 +901,7 @@ void dwgsim_core(dwgsim_opt_t * opt)
                       }
                       qstr[i] = 0;
                       // BWA
-                      FILE *fpo = (0 == j) ? opt->fp_bwa1: opt->fp_bwa2;
+                      gzFile fpo = (0 == j) ? opt->fp_bwa1: opt->fp_bwa2;
                       if (NULL != fpo) {
                         if(ILLUMINA == opt->data_type || IONTORRENT == opt->data_type) {
                             gzprintf(fpo, "@%s%s%s_%u_%u_%1u_%1u_%1u_%1u_%d:%d:%d_%d:%d:%d_%llx/%d\n", 
@@ -1009,7 +1009,7 @@ void dwgsim_core(dwgsim_opt_t * opt)
                           }
                       }
                       // BWA
-                      FILE *fpo = (0 == j) ? opt->fp_bwa1: opt->fp_bwa2;
+                      gzFile fpo = (0 == j) ? opt->fp_bwa1: opt->fp_bwa2;
                       if (NULL != fpo) {
                           if(ILLUMINA == opt->data_type || IONTORRENT == opt->data_type) {
                               gzprintf(fpo, "@%s%s%s_%u_%u_%1u_%1u_%1u_%1u_%d:%d:%d_%d:%d:%d_%llx/%d\n", 
