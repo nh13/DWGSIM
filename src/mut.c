@@ -314,9 +314,9 @@ void mut_add_ins(dwgsim_opt_t *opt, mutseq_t *hap1, mutseq_t *hap2, int32_t i, i
               ins = (ins << 2) | (mut_t)(drand48() * 4.0);
           }
       } else {
-          for (j = num_ins; 0 <= j; --j) {
+          for (j = num_ins - 1; 0 <= j; --j) {
               ins = (ins << 2) | nst_nt4_table[(int)bases[j]];
-          } 
+          }
       }
       // store
       if (hap & 0x1) hap1->s[i] = (num_ins << ins_length_shift) | (ins << muttype_shift) | INSERT | c;
