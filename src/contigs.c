@@ -24,6 +24,7 @@
    */
 
 #include <stdlib.h>
+#include <stdio.h>
 #include <assert.h>
 #include <unistd.h>
 #include <stdint.h>
@@ -37,8 +38,14 @@ contigs_t* contigs_init()
 
 void contigs_add(contigs_t *c, char *name, uint32_t len)
 {
+  contig_t *temp;
   c->n++;
-  c->contigs = realloc(c->contigs, c->n * sizeof(contig_t));
+  temp = realloc(c->contigs, c->n * sizeof(contig_t));
+  if(NULL == temp) {
+      fprintf(stderr, "Error: memory allocation failed in contigs_add\n");
+      exit(1);
+  }
+  c->contigs = temp;
   c->contigs[c->n-1].name = strdup(name);
   c->contigs[c->n-1].len = len;
 }

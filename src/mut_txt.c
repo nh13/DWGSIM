@@ -71,8 +71,14 @@ muts_txt_t *muts_txt_init(FILE *fp, contigs_t *c)
       }
 
       if(m->n == m->mem) {
+          mut_txt_t *temp;
           m->mem <<= 1;
-          m->muts = realloc(m->muts, m->mem * sizeof(mut_txt_t)); 
+          temp = realloc(m->muts, m->mem * sizeof(mut_txt_t));
+          if(NULL == temp) {
+              fprintf(stderr, "Error: memory allocation failed in muts_txt_init\n");
+              exit(1);
+          }
+          m->muts = temp;
       }
       m->muts[m->n].contig = i;
       m->muts[m->n].pos = pos;
@@ -109,8 +115,14 @@ muts_txt_t *muts_txt_init(FILE *fp, contigs_t *c)
       m->n++;
   }
   if(m->n < m->mem) {
+      mut_txt_t *temp;
       m->mem = m->n;
-      m->muts = realloc(m->muts, m->mem * sizeof(mut_txt_t)); 
+      temp = realloc(m->muts, m->mem * sizeof(mut_txt_t));
+      if(NULL == temp) {
+          fprintf(stderr, "Error: memory allocation failed in muts_txt_init\n");
+          exit(1);
+      }
+      m->muts = temp;
   }
 
   return m;
