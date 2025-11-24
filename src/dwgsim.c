@@ -179,19 +179,12 @@ void unreachable_exit(char *message) {
     exit(1);
 }
 
-int32_t ran_num(double prob, int32_t n)
-{
-  int32_t i, r;
-  for(i = r = 0; i < n; i++) {
-      if(drand48() < prob) r++;
-  }
-  return r;
-}
 
 int32_t get_muttype(char *str)
 {
   int32_t i;
-  for(i=0;i<strlen(str);i++) {
+  size_t len = strlen(str);
+  for(i=0;i<len;i++) {
       str[i] = tolower(str[i]);
   }
   if(0 == strcmp("snp", str) || 0 == strcmp("substitute", str) || 0 == strcmp("sub", str) || 0 == strcmp("s", str)) {
@@ -219,30 +212,6 @@ char iupac_and_base_to_mut(char iupac, char base)
   return 'X';
 }
 
-char bases_to_iupac(char b1, char b2)
-{
-  int32_t a1, a2, n;
-  a1 = nst_nt4_table[(int)b1];
-  a2 = nst_nt4_table[(int)b2];
-  if(4 == a1 || 4 == a2) return 'X';
-  if(a1 == b1) return 'X';
-  if(a1 < a2) {
-      n = a1 + (a2 << 2);
-  }
-  else {
-      n = a2 + (a1 << 2);
-  }
-  switch(n) {
-    case 4: return 'M'; // 0 + 4*1 = M
-    case 8: return 'R'; // 0 + 4*2 = R
-    case 12: return 'W'; // 0 + 4*3 = W
-    case 9: return 'S'; // 1 + 4*2 = S
-    case 13: return 'Y'; // 1 + 4*3 = Y
-    case 14: return 'K'; // 2 + 4*3 = K
-    default: break;
-  }
-  return 'X';
-}
 
 /* Error-checking open, copied from utils.c */
 #define xopen(fn, mode) err_xopen_core(__func__, fn, mode)
@@ -254,7 +223,7 @@ FILE *err_xopen_core(const char *func, const char *fn, const char *mode)
     return (strstr(mode, "r"))? stdin : stdout;
   if ((fp = fopen(fn, mode)) == 0) {
       fprintf(stderr, "[%s] fail to open file '%s'. Abort!\n", func, fn);
-      abort();
+      exit(1);
   }
   return fp;
 }
@@ -322,9 +291,16 @@ generate_errors_flows(dwgsim_opt_t *opt, uint8_t **seq, uint8_t **mask, int32_t 
               if(drand48() < 0.5) { // insert
                   // more memory
                   while((*mem) <= len + n_err) {
+                      uint8_t *temp_seq, *temp_mask;
                       (*mem) <<= 1; // double
-                      (*seq) = realloc((*seq), sizeof(uint8_t) * (*mem));
-                      (*mask) = realloc((*mask), sizeof(uint8_t) * (*mem));
+                      temp_seq = realloc((*seq), sizeof(uint8_t) * (*mem));
+                      temp_mask = realloc((*mask), sizeof(uint8_t) * (*mem));
+                      if(NULL == temp_seq || NULL == temp_mask) {
+                          fprintf(stderr, "Error: memory allocation failed in generate_errors_flows\n");
+                          exit(1);
+                      }
+                      (*seq) = temp_seq;
+                      (*mask) = temp_mask;
                   }
                   // shift up
                   for(j=len-1;i<=j;j--) {
@@ -392,9 +368,16 @@ generate_errors_flows(dwgsim_opt_t *opt, uint8_t **seq, uint8_t **mask, int32_t 
           if(0 == (*mask)[flow_i] && 0 < n_err) {  // insert
               // more memory
               while((*mem) <= len + n_err) {
+                  uint8_t *temp_seq, *temp_mask;
                   (*mem) <<= 1; // double
-                  (*seq) = realloc((*seq), sizeof(uint8_t) * (*mem));
-                  (*mask) = realloc((*mask), sizeof(uint8_t) * (*mem));
+                  temp_seq = realloc((*seq), sizeof(uint8_t) * (*mem));
+                  temp_mask = realloc((*mask), sizeof(uint8_t) * (*mem));
+                  if(NULL == temp_seq || NULL == temp_mask) {
+                      fprintf(stderr, "Error: memory allocation failed in generate_errors_flows\n");
+                      exit(1);
+                  }
+                  (*seq) = temp_seq;
+                  (*mask) = temp_mask;
               }
               // shift up
               for(j=len-1;i<=j;j--) {
@@ -877,8 +860,14 @@ void dwgsim_core(dwgsim_opt_t * opt)
                           continue;
                       }
                       if(IONTORRENT == opt->data_type && qstr_l < s[j]) {
+                          char *temp;
                           qstr_l = s[j];
-                          qstr = realloc(qstr, (1+qstr_l) * sizeof(char));
+                          temp = realloc(qstr, (1+qstr_l) * sizeof(char));
+                          if(NULL == temp) {
+                              fprintf(stderr, "Error: memory allocation failed for qstr\n");
+                              exit(1);
+                          }
+                          qstr = temp;
                       }
                       if(NULL != opt->fixed_quality) {
                           for (i = 0; i < s[j]; ++i) {
@@ -970,8 +959,14 @@ void dwgsim_core(dwgsim_opt_t * opt)
                           continue;
                       } 
                       if(IONTORRENT == opt->data_type && qstr_l < s[j]) {
+                          char *temp;
                           qstr_l = s[j];
-                          qstr = realloc(qstr, (1+qstr_l) * sizeof(char));
+                          temp = realloc(qstr, (1+qstr_l) * sizeof(char));
+                          if(NULL == temp) {
+                              fprintf(stderr, "Error: memory allocation failed for qstr\n");
+                              exit(1);
+                          }
+                          qstr = temp;
                       }
                       // get random sequence
                       for (i = 0; i < s[j]; ++i) {
@@ -993,7 +988,7 @@ void dwgsim_core(dwgsim_opt_t * opt)
                                   qstr[i] += (int)((ran_normal() * opt->quality_std) + 0.5);
                               }
                               if(qstr[i] < '!') qstr[i] = '!';
-                              if(QUAL_MAX + '!' < qstr[i]) qstr[i] = '!';
+                              if(QUAL_MAX + '!' < qstr[i]) qstr[i] = QUAL_MAX + '!';
                           }
                       }
                       qstr[i] = 0;
@@ -1116,21 +1111,21 @@ int main(int argc, char *argv[])
 
   // Open files
   opt->fp_fa = xopen(argv[optind+0], "r");
-  strcpy(fn_fai, argv[optind+0]); strcat(fn_fai, ".fai");
+  snprintf(fn_fai, sizeof(fn_fai), "%s.fai", argv[optind+0]);
   opt->fp_fai = fopen(fn_fai, "r"); // NB: depends on returning NULL;
-  strcpy(fn_tmp, argv[optind+1]); strcat(fn_tmp, ".mutations.txt");
+  snprintf(fn_tmp, sizeof(fn_tmp), "%s.mutations.txt", argv[optind+1]);
   opt->fp_mut = xopen(fn_tmp, "w");
-  strcpy(fn_tmp, argv[optind+1]); strcat(fn_tmp, ".mutations.vcf");
+  snprintf(fn_tmp, sizeof(fn_tmp), "%s.mutations.vcf", argv[optind+1]);
   opt->fp_vcf = xopen(fn_tmp, "w");
   if(0 == opt->muts_only) {
       if (opt->output_type != OUTPUT_TYPE_BWA) {
-          strcpy(fn_tmp, argv[optind+1]); strcat(fn_tmp, ".bfast.fastq.gz");
+          snprintf(fn_tmp, sizeof(fn_tmp), "%s.bfast.fastq.gz", argv[optind+1]);
           opt->fp_bfast = gzopen(fn_tmp, "w");
       }
       if (opt->output_type != OUTPUT_TYPE_BFAST) {
-          strcpy(fn_tmp, argv[optind+1]); strcat(fn_tmp, ".bwa.read1.fastq.gz");
+          snprintf(fn_tmp, sizeof(fn_tmp), "%s.bwa.read1.fastq.gz", argv[optind+1]);
           opt->fp_bwa1 = gzopen(fn_tmp, "w");
-          strcpy(fn_tmp, argv[optind+1]); strcat(fn_tmp, ".bwa.read2.fastq.gz");
+          snprintf(fn_tmp, sizeof(fn_tmp), "%s.bwa.read2.fastq.gz", argv[optind+1]);
           opt->fp_bwa2 = gzopen(fn_tmp, "w");
       }
   }
