@@ -140,7 +140,6 @@ int dwgsim_opt_usage(dwgsim_opt_t *opt)
   fprintf(stderr, "         -P STRING     a read prefix to prepend to each read name [%s]\n", (NULL == opt->read_prefix) ? "not using" : opt->read_prefix);
   fprintf(stderr, "         -q STRING     a fixed base quality to apply (single character) [%s]\n", (NULL == opt->fixed_quality) ? "not using" : opt->fixed_quality);
   fprintf(stderr, "         -Q FLOAT      standard deviation of the base quality scores [%.2lf]\n", (NULL == opt->fixed_quality) ? opt->quality_std : 0.0);
-  fprintf(stderr, "         -s INT        standard deviation of the distance for pairs [%.3f]\n", opt->std_dev);
   fprintf(stderr, "         -o INT        output type for the FASTQ files [%d]:\n", opt->output_type);
   fprintf(stderr, "                           0: interleaved (bfast) and per-read-end (bwa)\n");
   fprintf(stderr, "                           1: per-read-end (bwa) only\n");
@@ -226,21 +225,73 @@ dwgsim_opt_parse(dwgsim_opt_t *opt, int argc, char *argv[])
         case 'A': opt->read_one_strand = dwgsim_atoi(optarg, 'A', 0); break;
         case 'n': opt->max_n = dwgsim_atoi(optarg, 'n', 0); break;
         case 'y': opt->rand_read = atof(optarg); break;
-        case 'f': 
+        case 'f':
                   if(NULL != opt->flow_order) free(opt->flow_order);
                   opt->flow_order = (int8_t*)strdup(optarg);
+                  if(NULL == opt->flow_order) {
+                      fprintf(stderr, "Error: memory allocation failed for -f option\n");
+                      exit(1);
+                  }
                   break;
         case 'B': opt->use_base_error = 1; break;
         case 'H': opt->is_hap = 1; break;
         case 'h': return 0;
         case 'z': opt->seed = dwgsim_atoi(optarg, 'z', 1); break;
         case 'M': opt->muts_only = 1; break;
-        case 'm': free(opt->fn_muts_input); opt->fn_muts_input = strdup(optarg); opt->fn_muts_input_type = MUT_INPUT_TXT; muts_input_type |= 0x1; break;
-        case 'b': free(opt->fn_muts_input); opt->fn_muts_input = strdup(optarg); opt->fn_muts_input_type = MUT_INPUT_BED; muts_input_type |= 0x2; break;
-        case 'v': free(opt->fn_muts_input); opt->fn_muts_input = strdup(optarg); opt->fn_muts_input_type = MUT_INPUT_VCF; muts_input_type |= 0x4; break;
-        case 'x': free(opt->fn_regions_bed); opt->fn_regions_bed = strdup(optarg); break;
-        case 'P': free(opt->read_prefix); opt->read_prefix = strdup(optarg); break;
-        case 'q': opt->fixed_quality = strdup(optarg); break;
+        case 'm':
+                  free(opt->fn_muts_input);
+                  opt->fn_muts_input = strdup(optarg);
+                  if(NULL == opt->fn_muts_input) {
+                      fprintf(stderr, "Error: memory allocation failed for -m option\n");
+                      exit(1);
+                  }
+                  opt->fn_muts_input_type = MUT_INPUT_TXT;
+                  muts_input_type |= 0x1;
+                  break;
+        case 'b':
+                  free(opt->fn_muts_input);
+                  opt->fn_muts_input = strdup(optarg);
+                  if(NULL == opt->fn_muts_input) {
+                      fprintf(stderr, "Error: memory allocation failed for -b option\n");
+                      exit(1);
+                  }
+                  opt->fn_muts_input_type = MUT_INPUT_BED;
+                  muts_input_type |= 0x2;
+                  break;
+        case 'v':
+                  free(opt->fn_muts_input);
+                  opt->fn_muts_input = strdup(optarg);
+                  if(NULL == opt->fn_muts_input) {
+                      fprintf(stderr, "Error: memory allocation failed for -v option\n");
+                      exit(1);
+                  }
+                  opt->fn_muts_input_type = MUT_INPUT_VCF;
+                  muts_input_type |= 0x4;
+                  break;
+        case 'x':
+                  free(opt->fn_regions_bed);
+                  opt->fn_regions_bed = strdup(optarg);
+                  if(NULL == opt->fn_regions_bed) {
+                      fprintf(stderr, "Error: memory allocation failed for -x option\n");
+                      exit(1);
+                  }
+                  break;
+        case 'P':
+                  free(opt->read_prefix);
+                  opt->read_prefix = strdup(optarg);
+                  if(NULL == opt->read_prefix) {
+                      fprintf(stderr, "Error: memory allocation failed for -P option\n");
+                      exit(1);
+                  }
+                  break;
+        case 'q':
+                  free(opt->fixed_quality);
+                  opt->fixed_quality = strdup(optarg);
+                  if(NULL == opt->fixed_quality) {
+                      fprintf(stderr, "Error: memory allocation failed for -q option\n");
+                      exit(1);
+                  }
+                  break;
         case 'Q': opt->quality_std = atof(optarg); break;
         case 'o': opt->output_type = atoi(optarg); break;
         case 'a': opt->amplicons = 1; break;
