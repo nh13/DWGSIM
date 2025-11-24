@@ -5,9 +5,13 @@
 
 #define ERROR_RATE_NUM_RANDOM_READS 1000000
 
+#define READS_OUTPUT_TYPE_ALL 0
+#define READS_OUTPUT_TYPE_BWA 1
+#define READS_OUTPUT_TYPE_BFAST 2
+
 #define OUTPUT_TYPE_ALL 0
-#define OUTPUT_TYPE_BWA 1
-#define OUTPUT_TYPE_BFAST 2
+#define OUTPUT_TYPE_READS 1
+#define OUTPUT_TYPE_MUTS 2
 
 
 typedef struct {
@@ -37,7 +41,6 @@ typedef struct {
     int32_t use_base_error;
     int32_t is_hap;
     int32_t seed;
-    int32_t muts_only;
     char *fixed_quality;
     double quality_std;
     char *fn_muts_input;
@@ -51,6 +54,7 @@ typedef struct {
     FILE *fp_fa;
     FILE *fp_fai;
     char *read_prefix;
+    int32_t reads_output_type;
     int32_t output_type;
     int32_t amplicons;
 } dwgsim_opt_t;

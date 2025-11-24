@@ -63,7 +63,6 @@ dwgsim_opt_t* dwgsim_opt_init()
   opt->flow_order_len = 0;
   opt->use_base_error = 0;
   opt->seed = -1;
-  opt->muts_only = 0;
   opt->fixed_quality = NULL;
   opt->quality_std = 2.0;
   opt->fn_muts_input = NULL;
@@ -73,6 +72,8 @@ dwgsim_opt_t* dwgsim_opt_init()
   opt->fp_bfast = opt->fp_bwa1 = opt->fp_bwa2 = NULL;
   opt->fp_fa = opt->fp_fai = NULL;
   opt->read_prefix = NULL;
+  opt->reads_output_type = READS_OUTPUT_TYPE_ALL;
+  opt->output_type = OUTPUT_TYPE_ALL;
   opt->amplicons = 0;
 
   return opt;
@@ -132,7 +133,10 @@ int dwgsim_opt_usage(dwgsim_opt_t *opt)
   fprintf(stderr, "         -B            use a per-base error rate for Ion Torrent data [%s]\n", __IS_TRUE(opt->use_base_error));
   fprintf(stderr, "         -H            haploid mode [%s]\n", __IS_TRUE(opt->is_hap));
   fprintf(stderr, "         -z INT        random seed (-1 uses the current time) [%d]\n", opt->seed);
-  fprintf(stderr, "         -M            generate a mutations file only [%s]\n", __IS_TRUE(opt->muts_only));
+  fprintf(stderr, "         -M            output files to generate [%d]:\n", opt->output_type);
+  fprintf(stderr, "                           0: both reads and mutation files\n");
+  fprintf(stderr, "                           1: reads only\n");
+  fprintf(stderr, "                           2: mutations only\n");
   fprintf(stderr, "         -m FILE       the mutations txt file to re-create [%s]\n", (MUT_INPUT_TXT != opt->fn_muts_input_type) ? "not using" : opt->fn_muts_input);
   fprintf(stderr, "         -b FILE       the bed-like file set of candidate mutations [%s]\n", (MUT_INPUT_BED == opt->fn_muts_input_type) ? "not using" : opt->fn_muts_input);
   fprintf(stderr, "         -v FILE       the vcf file set of candidate mutations (use pl tag for strand) [%s]\n", (MUT_INPUT_VCF == opt->fn_muts_input_type) ? "not using" : opt->fn_muts_input);
@@ -140,7 +144,7 @@ int dwgsim_opt_usage(dwgsim_opt_t *opt)
   fprintf(stderr, "         -P STRING     a read prefix to prepend to each read name [%s]\n", (NULL == opt->read_prefix) ? "not using" : opt->read_prefix);
   fprintf(stderr, "         -q STRING     a fixed base quality to apply (single character) [%s]\n", (NULL == opt->fixed_quality) ? "not using" : opt->fixed_quality);
   fprintf(stderr, "         -Q FLOAT      standard deviation of the base quality scores [%.2lf]\n", (NULL == opt->fixed_quality) ? opt->quality_std : 0.0);
-  fprintf(stderr, "         -o INT        output type for the FASTQ files [%d]:\n", opt->output_type);
+  fprintf(stderr, "         -o INT        output type for the FASTQ files [%d]:\n", opt->reads_output_type);
   fprintf(stderr, "                           0: interleaved (bfast) and per-read-end (bwa)\n");
   fprintf(stderr, "                           1: per-read-end (bwa) only\n");
   fprintf(stderr, "                           2: interleaved (bfast) only\n");
@@ -204,7 +208,7 @@ dwgsim_opt_parse(dwgsim_opt_t *opt, int argc, char *argv[])
   int c;
   int muts_input_type = 0;
   
-  while ((c = getopt(argc, argv, "id:s:N:C:1:2:e:E:r:F:R:X:I:c:S:A:n:y:BHf:z:Mm:b:v:x:P:q:Q:o:ah")) >= 0) {
+  while ((c = getopt(argc, argv, "id:s:N:C:1:2:e:E:r:F:R:X:I:c:S:A:n:y:BHf:z:M:m:b:v:x:P:q:Q:o:ah")) >= 0) {
       switch (c) {
         case 'i': opt->is_inner = 1; break;
         case 'd': opt->dist = dwgsim_atoi(optarg, 'd', 0); break;
@@ -237,7 +241,7 @@ dwgsim_opt_parse(dwgsim_opt_t *opt, int argc, char *argv[])
         case 'H': opt->is_hap = 1; break;
         case 'h': return 0;
         case 'z': opt->seed = dwgsim_atoi(optarg, 'z', 1); break;
-        case 'M': opt->muts_only = 1; break;
+        case 'M': opt->output_type = dwgsim_atoi(optarg, 'M', 0); break;
         case 'm':
                   free(opt->fn_muts_input);
                   opt->fn_muts_input = strdup(optarg);
@@ -293,7 +297,7 @@ dwgsim_opt_parse(dwgsim_opt_t *opt, int argc, char *argv[])
                   }
                   break;
         case 'Q': opt->quality_std = atof(optarg); break;
-        case 'o': opt->output_type = atoi(optarg); break;
+        case 'o': opt->reads_output_type = atoi(optarg); break;
         case 'a': opt->amplicons = 1; break;
         default: fprintf(stderr, "Unrecognized option: -%c\n", c); return 0;
       }
@@ -364,7 +368,7 @@ dwgsim_opt_parse(dwgsim_opt_t *opt, int argc, char *argv[])
       fprintf(stderr, "Warning: remember to use the -P option with dwgsim_eval\n");
   }
 
-  __check_option(opt->output_type, 0, 2, "-o");
+  __check_option(opt->reads_output_type, 0, 2, "-o");
 
   switch(muts_input_type) {
     case 0x0:
@@ -448,7 +452,7 @@ dwgsim_opt_parse(dwgsim_opt_t *opt, int argc, char *argv[])
       opt->e[1].by = (opt->e[1].end - opt->e[1].start) / opt->length[1];
   }
   
-  __check_option(opt->muts_only, 0, 1, "-M");
+  __check_option(opt->output_type, OUTPUT_TYPE_ALL, OUTPUT_TYPE_MUTS, "-M");
   __check_option(opt->amplicons, 0, 1, "-a");
 
   if (opt->amplicons == 1 && opt->fn_regions_bed != NULL) {
