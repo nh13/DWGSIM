@@ -88,8 +88,14 @@ muts_bed_t *muts_bed_init(FILE *fp, contigs_t *c)
       }
 
       if(m->n == m->mem) {
+          mut_bed_t *temp;
           m->mem <<= 1;
-          m->muts = realloc(m->muts, m->mem * sizeof(mut_bed_t)); 
+          temp = realloc(m->muts, m->mem * sizeof(mut_bed_t));
+          if(NULL == temp) {
+              fprintf(stderr, "Error: memory allocation failed in muts_bed_init\n");
+              exit(1);
+          }
+          m->muts = temp;
       }
       m->muts[m->n].contig = i;
       m->muts[m->n].start = start;
@@ -118,8 +124,14 @@ muts_bed_t *muts_bed_init(FILE *fp, contigs_t *c)
       m->n++;
   }
   if(m->n < m->mem) {
+      mut_bed_t *temp;
       m->mem = m->n;
-      m->muts = realloc(m->muts, m->mem * sizeof(mut_bed_t)); 
+      temp = realloc(m->muts, m->mem * sizeof(mut_bed_t));
+      if(NULL == temp) {
+          fprintf(stderr, "Error: memory allocation failed in muts_bed_init\n");
+          exit(1);
+      }
+      m->muts = temp; 
   }
 
   return m;

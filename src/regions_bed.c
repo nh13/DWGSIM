@@ -93,10 +93,18 @@ regions_bed_txt *regions_bed_init(FILE *fp, contigs_t *c)
           prev_start = start;
           prev_end = end;
           while(r->mem <= r->n) {
+              uint32_t *temp_contig, *temp_start, *temp_end;
               r->mem <<= 1;
-              r->contig = realloc(r->contig, r->mem * sizeof(uint32_t));
-              r->start = realloc(r->start, r->mem * sizeof(uint32_t));
-              r->end = realloc(r->end, r->mem * sizeof(uint32_t));
+              temp_contig = realloc(r->contig, r->mem * sizeof(uint32_t));
+              temp_start = realloc(r->start, r->mem * sizeof(uint32_t));
+              temp_end = realloc(r->end, r->mem * sizeof(uint32_t));
+              if(NULL == temp_contig || NULL == temp_start || NULL == temp_end) {
+                  fprintf(stderr, "Error: memory allocation failed in regions_bed_init\n");
+                  exit(1);
+              }
+              r->contig = temp_contig;
+              r->start = temp_start;
+              r->end = temp_end;
           }
           r->contig[r->n] = i;
           r->start[r->n] = start;
@@ -119,16 +127,16 @@ void regions_bed_destroy(regions_bed_txt *r)
   free(r);
 }
 
-int32_t regions_bed_query(regions_bed_txt *r, uint32_t contig, uint32_t start, uint32_t end) 
+int32_t regions_bed_query(regions_bed_txt *r, uint32_t contig, uint32_t start, uint32_t end)
 {
   int32_t low, high, mid;
   if(NULL == r) return 1;
 
   low = 0;
   high = r->n-1;
-  
+
   while(low <= high) {
-      mid = (low + high) / 2;
+      mid = low + (high - low) / 2;
       if(contig < r->contig[mid] ||
          (contig == r->contig[mid] && start < r->start[mid])) {
           high = mid - 1;

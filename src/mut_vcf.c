@@ -181,8 +181,14 @@ muts_vcf_t *muts_vcf_init(FILE *fp, contigs_t *c)
 
           if(ref_l == alt_l) { // SNP
               while(m->mem <= m->n + ref_l - 1) {
+                  mut_vcf_t *temp;
                   m->mem <<= 1;
-                  m->muts = realloc(m->muts, m->mem * sizeof(mut_vcf_t)); 
+                  temp = realloc(m->muts, m->mem * sizeof(mut_vcf_t));
+                  if(NULL == temp) {
+                      fprintf(stderr, "Error: memory allocation failed in muts_vcf_init\n");
+                      exit(1);
+                  }
+                  m->muts = temp;
               }
               for(j=0;j<ref_l;j++) { // multiple snps
                   m->muts[m->n].contig = i;
@@ -197,8 +203,14 @@ muts_vcf_t *muts_vcf_init(FILE *fp, contigs_t *c)
           }
           else if(ref_l < alt_l) { // INS
               if(m->n == m->mem) {
+                  mut_vcf_t *temp;
                   m->mem <<= 1;
-                  m->muts = realloc(m->muts, m->mem * sizeof(mut_vcf_t)); 
+                  temp = realloc(m->muts, m->mem * sizeof(mut_vcf_t));
+                  if(NULL == temp) {
+                      fprintf(stderr, "Error: memory allocation failed in muts_vcf_init\n");
+                      exit(1);
+                  }
+                  m->muts = temp;
               }
               // skip over match bases
               for(j=0;j<ref_l;j++,pos++) {
@@ -222,8 +234,14 @@ muts_vcf_t *muts_vcf_init(FILE *fp, contigs_t *c)
                   exit(1);
               }
               while(m->mem < m->n + (ref_l - j)) {
+                  mut_vcf_t *temp;
                   m->mem <<= 1;
-                  m->muts = realloc(m->muts, m->mem * sizeof(mut_vcf_t)); 
+                  temp = realloc(m->muts, m->mem * sizeof(mut_vcf_t));
+                  if(NULL == temp) {
+                      fprintf(stderr, "Error: memory allocation failed in muts_vcf_init\n");
+                      exit(1);
+                  }
+                  m->muts = temp;
               }
               for(;j<ref_l;j++,pos++) {
                   m->muts[m->n].contig = i;
@@ -249,8 +267,14 @@ muts_vcf_t *muts_vcf_init(FILE *fp, contigs_t *c)
       n_read = fread(buffer + s, sizeof(char), BUFFER_L - s, fp);
   }
   if(m->n < m->mem) {
+      mut_vcf_t *temp;
       m->mem = m->n;
-      m->muts = realloc(m->muts, m->mem * sizeof(mut_vcf_t)); 
+      temp = realloc(m->muts, m->mem * sizeof(mut_vcf_t));
+      if(NULL == temp) {
+          fprintf(stderr, "Error: memory allocation failed in muts_vcf_init\n");
+          exit(1);
+      }
+      m->muts = temp;
   }
 
   return m;
