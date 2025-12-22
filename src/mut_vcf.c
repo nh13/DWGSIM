@@ -85,7 +85,7 @@ muts_vcf_t *muts_vcf_init(FILE *fp, contigs_t *c)
           }
 
           // process
-          if(EOF == sscanf(buffer+s, "%s\t%u\t%s\t%s\t%s", name, &pos, id, ref, alt)) {
+          if(EOF == sscanf(buffer+s, "%1023s\t%u\t%1023s\t%1023s\t%1024s", name, &pos, id, ref, alt)) {
               fprintf(stderr, "Error: VCF parsing error\n"); 
               exit(1);
           }

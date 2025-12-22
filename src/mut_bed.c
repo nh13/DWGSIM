@@ -52,7 +52,7 @@ muts_bed_t *muts_bed_init(FILE *fp, contigs_t *c)
   i = 0;
   // start is zero-based
   // one is one-based
-  while(0 < fscanf(fp, "%s\t%u\t%u\t%s\t%s", name, &start, &end, bases, type)) {
+  while(0 < fscanf(fp, "%1023s\t%u\t%u\t%1023s\t%1023s", name, &start, &end, bases, type)) {
       // find the contig
       while(i < c->n && 0 != strcmp(name, c->contigs[i].name)) {
           i++;
