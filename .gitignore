@@ -1,2 +1,4 @@
 src/*.o
 dwgsim*
+tests/*.o
+tests/run_tests
