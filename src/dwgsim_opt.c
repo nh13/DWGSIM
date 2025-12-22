@@ -382,8 +382,16 @@ dwgsim_opt_parse(dwgsim_opt_t *opt, int argc, char *argv[])
       break;
   }
   
-  // random seed
-  srand48((-1 == opt->seed) ? time(0) : opt->seed);
+  // random seed - use seed48() for full 48-bit state initialization
+  // This matches srand48() behavior: X_i = (seedval << 16) + 0x330E
+  {
+      unsigned short xseed[3];
+      long seed_val = (-1 == opt->seed) ? time(0) : opt->seed;
+      xseed[0] = 0x330e;                       // low-order 16 bits (standard value)
+      xseed[1] = seed_val & 0xffff;            // middle 16 bits
+      xseed[2] = (seed_val >> 16) & 0xffff;   // high-order 16 bits
+      seed48(xseed);
+  }
 
   if(IONTORRENT == opt->data_type) {
       if(NULL != opt->flow_order) {
