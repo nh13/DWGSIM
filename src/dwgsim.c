@@ -498,7 +498,7 @@ void dwgsim_core(dwgsim_opt_t * opt)
       // recalculate the total length
       tot_len = 0;
       for(i=0;i<regions_bed->n;i++) {
-          tot_len += regions_bed->end[i] - regions_bed->start[i] + 1;
+          tot_len += regions_bed->end[i] - regions_bed->start[i];  // BED half-open
       }
   }
   if(NULL != contigs) {
@@ -538,7 +538,7 @@ void dwgsim_core(dwgsim_opt_t * opt)
                   m = 0;
                   for(i=0;i<regions_bed->n;i++) {
                       if(contig_i == regions_bed->contig[i]) {
-                          m += regions_bed->end[i] - regions_bed->start[i] + 1;
+                          m += regions_bed->end[i] - regions_bed->start[i];  // BED half-open
                       }
                   }
                   if(0 == m) {
@@ -692,7 +692,7 @@ void dwgsim_core(dwgsim_opt_t * opt)
                           // convert in the bed file
                           for(i=0;i<regions_bed->n;i++) { // TODO: regions are in sorted order... so optimize
                               if(contig_i == regions_bed->contig[i]) {
-                                  j = regions_bed->end[i] - regions_bed->start[i] + 1;
+                                  j = regions_bed->end[i] - regions_bed->start[i];  // BED half-open
                                   if(pos < j) {
                                       pos = regions_bed->start[i] + pos - 1; // zero-based
                                       break;

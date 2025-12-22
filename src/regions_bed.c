@@ -52,7 +52,7 @@ regions_bed_txt *regions_bed_init(FILE *fp, contigs_t *c)
   i = 0;
   prev_contig = prev_start = prev_end = -1;
   while(0 < fscanf(fp, "%1023s\t%u\t%u", name, &start, &end)) {
-      len = end - start + 1;
+      len = end - start;  // BED is 0-based, half-open [start, end)
       // find the contig
       while(i < c->n && 0 != strcmp(name, c->contigs[i].name)) {
           i++;
@@ -78,8 +78,8 @@ regions_bed_txt *regions_bed_init(FILE *fp, contigs_t *c)
           exit(1);
       }
       
-      if(end - start + 1 != len) {
-          fprintf(stderr, "Warning: len != end - start + 1 [%s,%u,%u,%u]\n", name, start, end, len);
+      if(end - start != len) {
+          fprintf(stderr, "Warning: len != end - start [%s,%u,%u,%u]\n", name, start, end, len);
       }
       
       if(prev_contig == i && start <= prev_end && prev_start <= start) {
