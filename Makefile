@@ -33,7 +33,7 @@ all-recur lib-recur clean-recur cleanlocal-recur install-recur:
 
 all:$(PROG)
 
-.PHONY:all lib clean cleanlocal
+.PHONY:all lib clean cleanlocal test test-unit test-integration clean-tests
 .PHONY:all-recur lib-recur clean-recur cleanlocal-recur install-recur
 
 dwgsim:lib-recur $(DWGSIM_AOBJS)
@@ -54,7 +54,7 @@ cleanlocal:
 			fi; \
 		done;
 
-clean:cleanlocal-recur
+clean:cleanlocal-recur clean-tests
 
 dist:clean
 	if [ -f dwgsim-${PACKAGE_VERSION}.tar.gz ]; then \
@@ -72,6 +72,26 @@ dist:clean
 	gzip -9 dwgsim-${PACKAGE_VERSION}.tar; \
 	rm -rv dwgsim-${PACKAGE_VERSION};
 
-test:
+# Run all tests (unit + integration)
+test: test-unit test-integration
+
+# Integration tests
+test-integration:
 	if [ -d tmp ]; then rm -r tmp; fi
 	/bin/bash testdata/test.sh
+
+# Unit test target
+TEST_OBJS = tests/test_main.o
+TEST_PROG = tests/run_tests
+
+tests/test_main.o: tests/test_main.c tests/test_framework.h
+	$(CC) -c $(CFLAGS) $(DFLAGS) -I. -Isrc tests/test_main.c -o $@
+
+$(TEST_PROG): $(TEST_OBJS)
+	$(CC) $(CFLAGS) -o $@ $(TEST_OBJS) -lm
+
+test-unit: $(TEST_PROG)
+	./$(TEST_PROG)
+
+clean-tests:
+	rm -f tests/*.o $(TEST_PROG)

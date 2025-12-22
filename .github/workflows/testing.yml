@@ -12,11 +12,13 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           submodules: 'recursive'
       - name: Build
         run: make
-      - name: Test
-        run: make test
+      - name: Unit Tests
+        run: make test-unit
+      - name: Integration Tests
+        run: make test-integration
 
