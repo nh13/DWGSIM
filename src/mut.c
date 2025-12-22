@@ -315,7 +315,9 @@ void mut_add_ins(dwgsim_opt_t *opt, mutseq_t *hap1, mutseq_t *hap2, int32_t i, i
           }
       } else {
           for (j = num_ins - 1; 0 <= j; --j) {
-              ins = (ins << 2) | nst_nt4_table[(int)bases[j]];
+              int base = nst_nt4_table[(int)bases[j]];
+              if (base >= 4) base = (int)(drand48() * 4.0);  // N or unknown -> random base
+              ins = (ins << 2) | (mut_t)base;
           }
       }
       // store
@@ -344,11 +346,14 @@ void mut_add_ins(dwgsim_opt_t *opt, mutseq_t *hap1, mutseq_t *hap2, int32_t i, i
       bit_index = 0;
       while(0 < num_ins) {
           uint8_t b;
+          int base;
           if (NULL == bases) {
-              b = ((uint8_t)(drand48() * 4.0)) << (bit_index << 1);
+              base = (int)(drand48() * 4.0);
           } else {
-              b = nst_nt4_table[(int)bases[num_ins-1]] << (bit_index << 1);
+              base = nst_nt4_table[(int)bases[num_ins-1]];
+              if (base >= 4) base = (int)(drand48() * 4.0);  // N or unknown -> random base
           }
+          b = (uint8_t)(base << (bit_index << 1));
           if (hap & 0x1) hap1_ins[byte_index] |= b;
           if (hap & 0x2) hap2_ins[byte_index] |= b;
           bit_index++;
