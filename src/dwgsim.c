@@ -646,14 +646,21 @@ void dwgsim_core(dwgsim_opt_t * opt)
                               ran = ran_normal();
                               ran = ran * opt->std_dev + opt->dist;
                               d = (int)(ran + 0.5);
+                              // Clamp d to valid range to prevent overflow
+                              int min_dist = s[0] + s[1];
+                              if (d < min_dist) d = min_dist;
+                              if (d > l) d = l;
                           }
                           else {
                               d = 0;
                           }
-                          pos = (int)((l - d + 1) * drand48());
-                      } while (pos < 0 
-                               || pos >= seq.l 
-                               || pos + d - 1 >= seq.l 
+                          // Use 64-bit arithmetic to prevent overflow
+                          int64_t range = (int64_t)l - d + 1;
+                          if (range <= 0) continue;
+                          pos = (int)(range * drand48());
+                      } while (pos < 0
+                               || pos >= seq.l
+                               || pos + d - 1 >= seq.l
                                || (0 < s[1] && 0 == opt->is_inner && ((0 < s[0] && d <= s[1]) || (d <= s[0] && 0 < s[1]))));
                   } 
                   else {
@@ -662,11 +669,18 @@ void dwgsim_core(dwgsim_opt_t * opt)
                               ran = ran_normal();
                               ran = ran * opt->std_dev + opt->dist;
                               d = (int)(ran + 0.5);
+                              // Clamp d to valid range to prevent overflow
+                              int min_dist = s[0] + s[1];
+                              if (d < min_dist) d = min_dist;
+                              if (d > l) d = l;
                           }
                           else {
                               d = 0;
                           }
-                          pos = (int)((l - d + 1) * drand48());
+                          // Use 64-bit arithmetic to prevent overflow
+                          int64_t range = (int64_t)l - d + 1;
+                          if (range <= 0) continue;
+                          pos = (int)(range * drand48());
                           // convert in the bed file
                           for(i=0;i<regions_bed->n;i++) { // TODO: regions are in sorted order... so optimize
                               if(contig_i == regions_bed->contig[i]) {
