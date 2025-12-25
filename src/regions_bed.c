@@ -51,7 +51,7 @@ regions_bed_txt *regions_bed_init(FILE *fp, contigs_t *c)
   
   i = 0;
   prev_contig = prev_start = prev_end = -1;
-  while(0 < fscanf(fp, "%s\t%u\t%u", name, &start, &end)) {
+  while(0 < fscanf(fp, "%1023s\t%u\t%u", name, &start, &end)) {
       len = end - start + 1;
       // find the contig
       while(i < c->n && 0 != strcmp(name, c->contigs[i].name)) {

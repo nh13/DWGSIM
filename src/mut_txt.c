@@ -51,7 +51,7 @@ muts_txt_t *muts_txt_init(FILE *fp, contigs_t *c)
   m->muts = malloc(m->mem * sizeof(mut_txt_t));
 
   i = 0;
-  while(0 < fscanf(fp, "%s\t%u\t%c\t%s\t%d", name, &pos, &ref, mut, &is_hap)) {
+  while(0 < fscanf(fp, "%1023s\t%u\t%c\t%1023s\t%d", name, &pos, &ref, mut, &is_hap)) {
       // find the contig
       while(i < c->n && 0 != strcmp(name, c->contigs[i].name)) {
           i++;
