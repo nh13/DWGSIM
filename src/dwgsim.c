@@ -272,7 +272,10 @@ generate_errors_flows(dwgsim_opt_t *opt, uint8_t **seq, uint8_t **mask, int32_t 
       }
       (*mask)[i] = 0;
   }
-  assert(opt->flow_order_len != i);
+  if(opt->flow_order_len == i) {
+      fprintf(stderr, "Error: first base not found in flow order\n");
+      return -1;
+  }
   flow_i = i;
   prev_c = 4;
   for(i=0;i<len;i++) {
