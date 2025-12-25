@@ -294,12 +294,16 @@ generate_errors_flows(dwgsim_opt_t *opt, uint8_t **seq, uint8_t **mask, int32_t 
                       uint8_t *temp_seq, *temp_mask;
                       (*mem) <<= 1; // double
                       temp_seq = realloc((*seq), sizeof(uint8_t) * (*mem));
-                      temp_mask = realloc((*mask), sizeof(uint8_t) * (*mem));
-                      if(NULL == temp_seq || NULL == temp_mask) {
-                          fprintf(stderr, "Error: memory allocation failed in generate_errors_flows\n");
+                      if(NULL == temp_seq) {
+                          fprintf(stderr, "Error: memory allocation failed for seq in generate_errors_flows\n");
                           exit(1);
                       }
                       (*seq) = temp_seq;
+                      temp_mask = realloc((*mask), sizeof(uint8_t) * (*mem));
+                      if(NULL == temp_mask) {
+                          fprintf(stderr, "Error: memory allocation failed for mask in generate_errors_flows\n");
+                          exit(1);
+                      }
                       (*mask) = temp_mask;
                   }
                   // shift up
@@ -371,12 +375,16 @@ generate_errors_flows(dwgsim_opt_t *opt, uint8_t **seq, uint8_t **mask, int32_t 
                   uint8_t *temp_seq, *temp_mask;
                   (*mem) <<= 1; // double
                   temp_seq = realloc((*seq), sizeof(uint8_t) * (*mem));
-                  temp_mask = realloc((*mask), sizeof(uint8_t) * (*mem));
-                  if(NULL == temp_seq || NULL == temp_mask) {
-                      fprintf(stderr, "Error: memory allocation failed in generate_errors_flows\n");
+                  if(NULL == temp_seq) {
+                      fprintf(stderr, "Error: memory allocation failed for seq in generate_errors_flows\n");
                       exit(1);
                   }
                   (*seq) = temp_seq;
+                  temp_mask = realloc((*mask), sizeof(uint8_t) * (*mem));
+                  if(NULL == temp_mask) {
+                      fprintf(stderr, "Error: memory allocation failed for mask in generate_errors_flows\n");
+                      exit(1);
+                  }
                   (*mask) = temp_mask;
               }
               // shift up
